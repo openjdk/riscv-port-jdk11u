@@ -424,7 +424,7 @@ int LIR_Assembler::emit_deopt_handler() {
   return offset;
 }
 
-void LIR_Assembler::return_op(LIR_Opr result, C1SafepointPollStub* code_stub) {
+void LIR_Assembler::return_op(LIR_Opr result) {
   assert(result->is_illegal() || !result->is_single_cpu() || result->as_register() == x10, "word returns are in x10");
 
   // Pop the stack before the safepoint code
@@ -434,18 +434,20 @@ void LIR_Assembler::return_op(LIR_Opr result, C1SafepointPollStub* code_stub) {
     __ reserved_stack_check();
   }
 
-  code_stub->set_safepoint_offset(__ offset());
-  __ relocate(relocInfo::poll_return_type);
-  __ safepoint_poll(*code_stub->entry(), true /* at_return */, false /* acquire */, true /* in_nmethod */);
+  address polling_page(os::get_polling_page());
+  __ read_polling_page(t0, polling_page, relocInfo::poll_return_type);
   __ ret();
 }
 
 int LIR_Assembler::safepoint_poll(LIR_Opr tmp, CodeEmitInfo* info) {
+  address polling_page(os::get_polling_page());
   guarantee(info != NULL, "Shouldn't be NULL");
-  __ get_polling_page(t0, relocInfo::poll_type);
+  assert(os::is_poll_address(polling_page), "should be");
+  int32_t offset = 0;
+  __ get_polling_page(t0, polling_page, offset, relocInfo::poll_type);
   add_debug_info_for_branch(info);  // This isn't just debug info:
                                     // it's the oop map
-  __ read_polling_page(t0, 0, relocInfo::poll_type);
+  __ read_polling_page(t0, offset, relocInfo::poll_type);
   return __ offset();
 }
 
