@@ -48,8 +48,6 @@ public:
   // Initialization
   static void initialize();
 
-  constexpr static bool supports_stack_watermark_barrier() { return true; }
-
   enum Feature_Flag {
 #define CPU_FEATURE_FLAGS(decl)               \
     decl(I,            "i",            8)     \

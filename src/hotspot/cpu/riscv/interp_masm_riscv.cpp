@@ -519,7 +519,7 @@ void InterpreterMacroAssembler::dispatch_base(TosState state,
 
   if (needs_thread_local_poll) {
     NOT_PRODUCT(block_comment("Thread-local Safepoint poll"));
-    ld(t1, Address(xthread, JavaThread::polling_word_offset()));
+    ld(t1, Address(xthread, Thread::polling_page_offset()));
     andi(t1, t1, SafepointMechanism::poll_bit());
     bnez(t1, safepoint);
   }
@@ -590,23 +590,6 @@ void InterpreterMacroAssembler::remove_activation(
   // Note: Registers x13 may be in use for the
   // result check if synchronized method
   Label unlocked, unlock, no_unlock;
-
-  // The below poll is for the stack watermark barrier. It allows fixing up frames lazily,
-  // that would normally not be safe to use. Such bad returns into unsafe territory of
-  // the stack, will call InterpreterRuntime::at_unwind.
-  Label slow_path;
-  Label fast_path;
-  safepoint_poll(slow_path, true /* at_return */, false /* acquire */, false /* in_nmethod */);
-  j(fast_path);
-
-  bind(slow_path);
-  push(state);
-  set_last_Java_frame(esp, fp, (address)pc(), t0);
-  super_call_VM_leaf(CAST_FROM_FN_PTR(address, InterpreterRuntime::at_unwind), xthread);
-  reset_last_Java_frame(true);
-  pop(state);
-
-  bind(fast_path);
 
   // get the value of _do_not_unlock_if_synchronized into x13
   const Address do_not_unlock_if_synchronized(xthread,

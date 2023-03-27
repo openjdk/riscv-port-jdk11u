@@ -39,7 +39,6 @@
 #include "runtime/monitorChunk.hpp"
 #include "runtime/os.inline.hpp"
 #include "runtime/signature.hpp"
-#include "runtime/stackWatermarkSet.hpp"
 #include "runtime/stubCodeGenerator.hpp"
 #include "runtime/stubRoutines.hpp"
 #include "vmreg_riscv.inline.hpp"
@@ -509,13 +508,7 @@ frame frame::sender_raw(RegisterMap* map) const {
 }
 
 frame frame::sender(RegisterMap* map) const {
-  frame result = sender_raw(map);
-
-  if (map->process_frames()) {
-    StackWatermarkSet::on_iteration(map->thread(), result);
-  }
-
-  return result;
+  return sender_raw(map);
 }
 
 bool frame::is_interpreted_frame_valid(JavaThread* thread) const {

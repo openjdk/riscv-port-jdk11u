@@ -2122,15 +2122,16 @@ void MacroAssembler::check_klass_subtype(Register sub_klass,
 }
 
 void MacroAssembler::safepoint_poll(Label& slow_path, bool at_return, bool acquire, bool in_nmethod) {
-  ld(t0, Address(xthread, JavaThread::polling_word_offset()));
-  if (acquire) {
-    membar(MacroAssembler::LoadLoad | MacroAssembler::LoadStore);
-  }
-  if (at_return) {
-    bgtu(in_nmethod ? sp : fp, t0, slow_path, true /* is_far */);
+  if (SafepointMechanism::uses_thread_local_poll()) {
+    ld(t1, Address(xthread, Thread::polling_page_offset()));
+    andi(t0, t1, SafepointMechanism::poll_bit());
+    bnez(t0, slow_path);
   } else {
-    andi(t0, t0, SafepointMechanism::poll_bit());
-    bnez(t0, slow_path, true /* is_far */);
+    int32_t offset = 0;
+    la_patchable(t0, ExternalAddress(SafepointSynchronize::address_of_state()), offset);
+    lwu(t0, Address(t0, offset));
+    assert(SafepointSynchronize::_not_synchronized == 0, "rewrite this code");
+    bnez(t0, slow_path);
   }
 }
 
@@ -2752,22 +2753,29 @@ void MacroAssembler::reserved_stack_check() {
 }
 
 // Move the address of the polling page into dest.
-void MacroAssembler::get_polling_page(Register dest, relocInfo::relocType rtype) {
-  ld(dest, Address(xthread, JavaThread::polling_page_offset()));
+void MacroAssembler::get_polling_page(Register dest, address page, int32_t &offset, relocInfo::relocType rtype) {
+  if (SafepointMechanism::uses_thread_local_poll()) {
+    ld(dest, Address(xthread, Thread::polling_page_offset()));
+  } else {
+    uint64_t align = (uint64_t)page & 0xfff;
+    assert(align == 0, "polling page must be page aligned");
+    la_patchable(dest, Address(page, rtype), offset);
+  }
 }
 
 // Read the polling page.  The address of the polling page must
 // already be in r.
-address MacroAssembler::read_polling_page(Register r, int32_t offset, relocInfo::relocType rtype) {
-  address mark;
-  {
-    InstructionMark im(this);
-    code_section()->relocate(inst_mark(), rtype);
-    lwu(zr, Address(r, offset));
-    mark = inst_mark();
-  }
-  verify_cross_modify_fence_not_required();
-  return mark;
+void MacroAssembler::read_polling_page(Register dest, address page, relocInfo::relocType rtype) {
+  int32_t offset = 0;
+  get_polling_page(dest, page, offset, rtype);
+  read_polling_page(dest, offset, rtype);
+}
+
+// Read the polling page.  The address of the polling page must
+// already be in r.
+void MacroAssembler::read_polling_page(Register dest, int32_t offset, relocInfo::relocType rtype) {
+  code_section()->relocate(pc(), rtype);
+  lwu(zr, Address(dest, offset));
 }
 
 void  MacroAssembler::set_narrow_oop(Register dst, jobject obj) {
