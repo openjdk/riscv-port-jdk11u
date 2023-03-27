@@ -90,10 +90,8 @@ define_pd_global(intx, InlineSmallCode,          1000);
           "Extend fence.i to fence.i + fence.")                                  \
   product(bool, AvoidUnalignedAccesses, true,                                    \
           "Avoid generating unaligned memory accesses")                          \
-  product(bool, UseRVV, false, EXPERIMENTAL, "Use RVV instructions")             \
-  product(bool, UseRVB, false, EXPERIMENTAL, "Use RVB instructions")             \
-  product(bool, UseRVC, false, EXPERIMENTAL, "Use RVC instructions")             \
-  product(bool, UseRVVForBigIntegerShiftIntrinsics, true,                        \
-          "Use RVV instructions for left/right shift of BigInteger")
+  experimental(bool, UseRVV, false, "Use RVV instructions")                      \
+  experimental(bool, UseRVB, false, "Use RVB instructions")                      \
+  experimental(bool, UseRVC, false, "Use RVC instructions")
 
 #endif // CPU_RISCV_GLOBALS_RISCV_HPP

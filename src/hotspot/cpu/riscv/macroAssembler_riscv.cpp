@@ -1086,7 +1086,7 @@ void MacroAssembler::popa() {
   pop_reg(0xffffffe2, sp);
 }
 
-void MacroAssembler::push_CPU_state(bool save_vectors, int vector_size_in_bytes) {
+void MacroAssembler::push_CPU_state() {
   CompressibleRegion cr(this);
   // integer registers, except zr(x0) & ra(x1) & sp(x2) & gp(x3) & tp(x4)
   push_reg(0xffffffe0, sp);
@@ -1096,28 +1096,10 @@ void MacroAssembler::push_CPU_state(bool save_vectors, int vector_size_in_bytes)
   for (int i = 0; i < 32; i++) {
     fsd(as_FloatRegister(i), Address(sp, i * wordSize));
   }
-
-  // vector registers
-  if (save_vectors) {
-    sub(sp, sp, vector_size_in_bytes * VectorRegisterImpl::number_of_registers);
-    vsetvli(t0, x0, Assembler::e64, Assembler::m8);
-    for (int i = 0; i < VectorRegisterImpl::number_of_registers; i += 8) {
-      add(t0, sp, vector_size_in_bytes * i);
-      vse64_v(as_VectorRegister(i), t0);
-    }
-  }
 }
 
-void MacroAssembler::pop_CPU_state(bool restore_vectors, int vector_size_in_bytes) {
+void MacroAssembler::pop_CPU_state() {
   CompressibleRegion cr(this);
-  // vector registers
-  if (restore_vectors) {
-    vsetvli(t0, x0, Assembler::e64, Assembler::m8);
-    for (int i = 0; i < VectorRegisterImpl::number_of_registers; i += 8) {
-      vle64_v(as_VectorRegister(i), sp);
-      add(sp, sp, vector_size_in_bytes * 8);
-    }
-  }
 
   // float registers
   for (int i = 0; i < 32; i++) {

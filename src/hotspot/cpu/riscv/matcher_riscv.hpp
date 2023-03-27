@@ -31,16 +31,9 @@
   // false => size gets scaled to BytesPerLong, ok.
   static const bool init_array_count_is_in_bytes = false;
 
-  // Whether this platform implements the scalable vector feature
-  static const bool implements_scalable_vector = true;
-
-  static const bool supports_scalable_vector() {
-    return UseRVV;
-  }
-
-  // riscv supports misaligned vectors store/load.
+  // riscv doesn't support misaligned vectors store/load on JDK11.
   static constexpr bool misaligned_vectors_ok() {
-    return true;
+    return false;
   }
 
   // Whether code generation need accurate ConvI2L types.
@@ -52,9 +45,6 @@
   // Do we need to mask the count passed to shift instructions or does
   // the cpu only look at the lower 5/6 bits anyway?
   static const bool need_masked_shift_count = false;
-
-  // No support for generic vector operands.
-  static const bool supports_generic_vector_operands = false;
 
   static constexpr bool isSimpleConstant64(jlong value) {
     // Will one (StoreL ConL) be cheaper than two (StoreI ConI)?.
@@ -127,31 +117,6 @@
   // the relevant 32 bits.
   static const bool int_in_long = true;
 
-  // Does the CPU supports vector variable shift instructions?
-  static constexpr bool supports_vector_variable_shifts(void) {
-    return false;
-  }
-
-  // Does the CPU supports vector variable rotate instructions?
-  static constexpr bool supports_vector_variable_rotates(void) {
-    return false;
-  }
-
-  // Does the CPU supports vector constant rotate instructions?
-  static constexpr bool supports_vector_constant_rotates(int shift) {
-    return false;
-  }
-
-  // Does the CPU supports vector unsigned comparison instructions?
-  static const bool supports_vector_comparison_unsigned(int vlen, BasicType bt) {
-    return false;
-  }
-
-  // Some microarchitectures have mask registers used on vectors
-  static const bool has_predicated_vectors(void) {
-    return false;
-  }
-
   // true means we have fast l2f convers
   // false means that conversion is done by runtime call
   static constexpr bool convL2FSupported(void) {
@@ -160,10 +125,5 @@
 
   // Implements a variant of EncodeISOArrayNode that encode ASCII only
   static const bool supports_encode_ascii_array = false;
-
-  // Returns pre-selection estimated size of a vector operation.
-  static int vector_op_pre_select_sz_estimate(int vopc, BasicType ety, int vlen) {
-    return 0;
-  }
 
 #endif // CPU_RISCV_MATCHER_RISCV_HPP
