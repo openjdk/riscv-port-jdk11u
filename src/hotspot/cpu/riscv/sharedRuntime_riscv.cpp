@@ -80,9 +80,8 @@ public:
 };
 
 class RegisterSaver {
-  const bool _save_vectors;
  public:
-  RegisterSaver(bool save_vectors) : _save_vectors(UseRVV && save_vectors) {}
+  RegisterSaver() {}
   ~RegisterSaver() {}
   OopMap* save_live_registers(MacroAssembler* masm, int additional_frame_words, int* total_frame_words);
   void restore_live_registers(MacroAssembler* masm);
@@ -91,11 +90,7 @@ class RegisterSaver {
   // Used by deoptimization when it is managing result register
   // values on its own
   // gregs:28, float_register:32; except: x1(ra) & x2(sp) & gp(x3) & tp(x4)
-  // |---v0---|<---SP
-  // |---v1---|save vectors only in generate_handler_blob
-  // |-- .. --|
-  // |---v31--|-----
-  // |---f0---|
+  // |---f0---|<---SP
   // |---f1---|
   // |   ..   |
   // |---f31--|
@@ -106,16 +101,8 @@ class RegisterSaver {
   // |---x31--|
   // |---fp---|
   // |---ra---|
-  int v0_offset_in_bytes(void) { return 0; }
   int f0_offset_in_bytes(void) {
-    int f0_offset = 0;
-#ifdef COMPILER2
-    if (_save_vectors) {
-      f0_offset += Matcher::scalable_vector_reg_size(T_INT) * VectorRegisterImpl::number_of_registers *
-                   BytesPerInt;
-    }
-#endif
-    return f0_offset;
+    return 0;
   }
   int reserved_slot_offset_in_bytes(void) {
     return f0_offset_in_bytes() +
@@ -142,15 +129,6 @@ class RegisterSaver {
 };
 
 OopMap* RegisterSaver::save_live_registers(MacroAssembler* masm, int additional_frame_words, int* total_frame_words) {
-  int vector_size_in_bytes = 0;
-  int vector_size_in_slots = 0;
-#ifdef COMPILER2
-  if (_save_vectors) {
-    vector_size_in_bytes += Matcher::scalable_vector_reg_size(T_BYTE);
-    vector_size_in_slots += Matcher::scalable_vector_reg_size(T_INT);
-  }
-#endif
-
   assert_cond(masm != NULL && total_frame_words != NULL);
   int frame_size_in_bytes = align_up(additional_frame_words * wordSize + ra_offset_in_bytes() + wordSize, 16);
   // OopMap frame size is in compiler stack slots (jint's) not bytes or words
@@ -161,9 +139,9 @@ OopMap* RegisterSaver::save_live_registers(MacroAssembler* masm, int additional_
   int frame_size_in_words = frame_size_in_bytes / wordSize;
   *total_frame_words = frame_size_in_words;
 
-  // Save Integer, Float and Vector registers.
+  // Save Integer and Float registers.
   __ enter();
-  __ push_CPU_state(_save_vectors, vector_size_in_bytes);
+  __ push_CPU_state();
 
   // Set an oopmap for the call site.  This oopmap will map all
   // oop-registers and debug-info registers as callee-saved.  This
@@ -176,13 +154,6 @@ OopMap* RegisterSaver::save_live_registers(MacroAssembler* masm, int additional_
 
   int sp_offset_in_slots = 0;
   int step_in_slots = 0;
-  if (_save_vectors) {
-    step_in_slots = vector_size_in_slots;
-    for (int i = 0; i < VectorRegisterImpl::number_of_registers; i++, sp_offset_in_slots += step_in_slots) {
-      VectorRegister r = as_VectorRegister(i);
-      oop_map->set_callee_saved(VMRegImpl::stack2reg(sp_offset_in_slots), r->as_VMReg());
-    }
-  }
 
   step_in_slots = FloatRegisterImpl::max_slots_per_register;
   for (int i = 0; i < FloatRegisterImpl::number_of_registers; i++, sp_offset_in_slots += step_in_slots) {
@@ -207,18 +178,13 @@ OopMap* RegisterSaver::save_live_registers(MacroAssembler* masm, int additional_
 
 void RegisterSaver::restore_live_registers(MacroAssembler* masm) {
   assert_cond(masm != NULL);
-#ifdef COMPILER2
-  __ pop_CPU_state(_save_vectors, Matcher::scalable_vector_reg_size(T_BYTE));
-#else
-  __ pop_CPU_state(_save_vectors);
-#endif
+  __ pop_CPU_state();
   __ leave();
 }
 
 // Is vector's size (in bytes) bigger than a size saved by default?
-// riscv does not ovlerlay the floating-point registers on vector registers like aarch64.
 bool SharedRuntime::is_wide_vector(int size) {
-  return UseRVV;
+  return false;
 }
 
 // The java_calling_convention describes stack locations as ideal slots on
@@ -672,13 +638,6 @@ AdapterHandlerEntry* SharedRuntime::generate_i2c2i_adapters(MacroAssembler *masm
 
   __ flush();
   return AdapterHandlerLibrary::new_entry(fingerprint, i2c_entry, c2i_entry, c2i_unverified_entry, c2i_no_clinit_check_entry);
-}
-
-int SharedRuntime::vector_calling_convention(VMRegPair *regs,
-                                             uint num_bits,
-                                             uint total_args_passed) {
-  Unimplemented();
-  return 0;
 }
 
 int SharedRuntime::c_calling_convention(const BasicType *sig_bt,
@@ -1891,7 +1850,7 @@ void SharedRuntime::generate_deopt_blob() {
   OopMap* map = NULL;
   OopMapSet *oop_maps = new OopMapSet();
   assert_cond(masm != NULL && oop_maps != NULL);
-  RegisterSaver reg_saver(COMPILER2_OR_JVMCI != 0);
+  RegisterSaver reg_saver;
 
   // -------------
   // This code enters when returning to a de-optimized nmethod.  A return
@@ -2423,7 +2382,7 @@ SafepointBlob* SharedRuntime::generate_handler_blob(address call_ptr, int poll_t
   address call_pc = NULL;
   int frame_size_in_words = -1;
   bool cause_return = (poll_type == POLL_AT_RETURN);
-  RegisterSaver reg_saver(poll_type == POLL_AT_VECTOR_LOOP /* save_vectors */);
+  RegisterSaver reg_saver;
 
   // Save Integer and Float registers.
   map = reg_saver.save_live_registers(masm, 0, &frame_size_in_words);
@@ -2542,7 +2501,7 @@ RuntimeStub* SharedRuntime::generate_resolve_blob(address destination, const cha
   assert_cond(masm != NULL);
 
   int frame_size_in_words = -1;
-  RegisterSaver reg_saver(false /* save_vectors */);
+  RegisterSaver reg_saver;
 
   OopMapSet *oop_maps = new OopMapSet();
   assert_cond(oop_maps != NULL);

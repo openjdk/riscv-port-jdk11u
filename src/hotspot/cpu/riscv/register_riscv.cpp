@@ -37,11 +37,6 @@ const int ConcreteRegisterImpl::max_fpr =
     ConcreteRegisterImpl::max_gpr +
     FloatRegisterImpl::number_of_registers * FloatRegisterImpl::max_slots_per_register;
 
-const int ConcreteRegisterImpl::max_vpr =
-    ConcreteRegisterImpl::max_fpr +
-    VectorRegisterImpl::number_of_registers * VectorRegisterImpl::max_slots_per_register;
-
-
 const char* RegisterImpl::name() const {
   static const char *const names[number_of_registers] = {
     "zr", "ra", "sp", "gp", "tp", "t0", "t1", "t2", "fp", "x9",

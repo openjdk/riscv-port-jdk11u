@@ -307,14 +307,12 @@ class ConcreteRegisterImpl : public AbstractRegisterImpl {
   // it's optoregs.
 
     number_of_registers = (RegisterImpl::max_slots_per_register * RegisterImpl::number_of_registers +
-                           FloatRegisterImpl::max_slots_per_register * FloatRegisterImpl::number_of_registers +
-                           VectorRegisterImpl::max_slots_per_register * VectorRegisterImpl::number_of_registers)
+                           FloatRegisterImpl::max_slots_per_register * FloatRegisterImpl::number_of_registers)
   };
 
   // added to make it compile
   static const int max_gpr;
   static const int max_fpr;
-  static const int max_vpr;
 };
 
 typedef AbstractRegSet<Register> RegSet;

@@ -45,16 +45,8 @@ void VMRegImpl::set_regName() {
     freg = freg->successor();
   }
 
-  VectorRegister vreg = ::as_VectorRegister(0);
-  for ( ; i < ConcreteRegisterImpl::max_vpr ; ) {
-    for (int j = 0 ; j < VectorRegisterImpl::max_slots_per_register ; j++) {
-      regName[i++] = reg->name();
-    }
-    vreg = vreg->successor();
-  }
-
   for ( ; i < ConcreteRegisterImpl::number_of_registers ; i++) {
-    regName[i] = "NON-GPR-FPR-VPR";
+    regName[i] = "NON-GPR-FPR";
   }
 }
 
