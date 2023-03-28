@@ -1046,52 +1046,6 @@ int MacroAssembler::pop_fp(unsigned int bitset, Register stack) {
   return count;
 }
 
-#ifdef COMPILER2
-int MacroAssembler::push_vp(unsigned int bitset, Register stack) {
-  CompressibleRegion cr(this);
-  int vector_size_in_bytes = Matcher::scalable_vector_reg_size(T_BYTE);
-
-  // Scan bitset to accumulate register pairs
-  unsigned char regs[32];
-  int count = 0;
-  for (int reg = 31; reg >= 0; reg--) {
-    if ((1U << 31) & bitset) {
-      regs[count++] = reg;
-    }
-    bitset <<= 1;
-  }
-
-  for (int i = 0; i < count; i++) {
-    sub(stack, stack, vector_size_in_bytes);
-    vs1r_v(as_VectorRegister(regs[i]), stack);
-  }
-
-  return count * vector_size_in_bytes / wordSize;
-}
-
-int MacroAssembler::pop_vp(unsigned int bitset, Register stack) {
-  CompressibleRegion cr(this);
-  int vector_size_in_bytes = Matcher::scalable_vector_reg_size(T_BYTE);
-
-  // Scan bitset to accumulate register pairs
-  unsigned char regs[32];
-  int count = 0;
-  for (int reg = 31; reg >= 0; reg--) {
-    if ((1U << 31) & bitset) {
-      regs[count++] = reg;
-    }
-    bitset <<= 1;
-  }
-
-  for (int i = count - 1; i >= 0; i--) {
-    vl1r_v(as_VectorRegister(regs[i]), stack);
-    add(stack, stack, vector_size_in_bytes);
-  }
-
-  return count * vector_size_in_bytes / wordSize;
-}
-#endif // COMPILER2
-
 void MacroAssembler::push_call_clobbered_registers_except(RegSet exclude) {
   CompressibleRegion cr(this);
   // Push integer registers x7, x10-x17, x28-x31.
