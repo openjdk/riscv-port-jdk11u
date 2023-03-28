@@ -546,16 +546,6 @@ class StubGenerator: public StubCodeGenerator {
     // make sure object is 'reasonable'
     __ beqz(x10, exit); // if obj is NULL it is OK
 
-#if INCLUDE_ZGC
-    if (UseZGC) {
-      // Check if mask is good.
-      // verifies that ZAddressBadMask & x10 == 0
-      __ ld(c_rarg3, Address(xthread, ZThreadLocalData::address_bad_mask_offset()));
-      __ andr(c_rarg2, x10, c_rarg3);
-      __ bnez(c_rarg2, error);
-    }
-#endif
-
     // Check if the oop is in the right area of memory
     __ mv(c_rarg3, (intptr_t) Universe::verify_oop_mask());
     __ andr(c_rarg2, x10, c_rarg3);
