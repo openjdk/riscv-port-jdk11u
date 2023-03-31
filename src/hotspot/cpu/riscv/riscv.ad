@@ -9826,7 +9826,6 @@ instruct stringU_indexof_char(iRegP_R11 str1, iRegI_R12 cnt1, iRegI_R13 ch,
                               iRegINoSp tmp3, iRegINoSp tmp4, rFlagsReg cr)
 %{
   match(Set result (StrIndexOfChar (Binary str1 cnt1) ch));
-  predicate(((StrIndexOfCharNode*)n)->encoding() == StrIntrinsicNode::U);
   effect(USE_KILL str1, USE_KILL cnt1, USE_KILL ch, TEMP_DEF result,
          TEMP tmp1, TEMP tmp2, TEMP tmp3, TEMP tmp4, KILL cr);
 
@@ -9839,24 +9838,6 @@ instruct stringU_indexof_char(iRegP_R11 str1, iRegI_R12 cnt1, iRegI_R13 ch,
   ins_pipe(pipe_class_memory);
 %}
 
-
-instruct stringL_indexof_char(iRegP_R11 str1, iRegI_R12 cnt1, iRegI_R13 ch,
-                              iRegI_R10 result, iRegINoSp tmp1, iRegINoSp tmp2,
-                              iRegINoSp tmp3, iRegINoSp tmp4, rFlagsReg cr)
-%{
-  match(Set result (StrIndexOfChar (Binary str1 cnt1) ch));
-  predicate(((StrIndexOfCharNode*)n)->encoding() == StrIntrinsicNode::L);
-  effect(USE_KILL str1, USE_KILL cnt1, USE_KILL ch, TEMP_DEF result,
-         TEMP tmp1, TEMP tmp2, TEMP tmp3, TEMP tmp4, KILL cr);
-
-  format %{ "StringUTF16 IndexOf char[] $str1,$cnt1,$ch -> $result" %}
-  ins_encode %{
-    __ string_indexof_char($str1$$Register, $cnt1$$Register, $ch$$Register,
-                           $result$$Register, $tmp1$$Register, $tmp2$$Register,
-                           $tmp3$$Register, $tmp4$$Register, true /* isL */);
-  %}
-  ins_pipe(pipe_class_memory);
-%}
 
 // clearing of an array
 instruct clearArray_reg_reg(iRegL_R29 cnt, iRegP_R28 base, Universe dummy)
