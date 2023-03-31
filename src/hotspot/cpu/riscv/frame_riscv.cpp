@@ -56,13 +56,21 @@ void RegisterMap::check_location_valid() {
 // Profiling/safepoint support
 
 bool frame::safe_for_sender(JavaThread *thread) {
-  address   addr_sp = (address)_sp;
-  address   addr_fp = (address)_fp;
+  address   sp = (address)_sp;
+  address   fp = (address)_fp;
   address   unextended_sp = (address)_unextended_sp;
 
   // consider stack guards when trying to determine "safe" stack pointers
+  static size_t stack_guard_size = os::uses_stack_guard_pages() ?
+                                   (JavaThread::stack_red_zone_size() + JavaThread::stack_yellow_zone_size()) : 0;
+  size_t usable_stack_size = thread->stack_size() - stack_guard_size;
+
   // sp must be within the usable part of the stack (not in guards)
-  if (!thread->is_in_usable_stack(addr_sp)) {
+  bool sp_safe = (sp < thread->stack_base()) &&
+                 (sp >= thread->stack_base() - usable_stack_size);
+
+
+  if (!sp_safe) {
     return false;
   }
 
@@ -79,14 +87,15 @@ bool frame::safe_for_sender(JavaThread *thread) {
   // So unextended sp must be within the stack but we need not to check
   // that unextended sp >= sp
 
-  if (!thread->is_in_full_stack_checked(unextended_sp)) {
+  bool unextended_sp_safe = (unextended_sp < thread->stack_base());
+
+  if (!unextended_sp_safe) {
     return false;
   }
 
   // an fp must be within the stack and above (but not equal) sp
   // second evaluation on fp+ is added to handle situation where fp is -1
-  bool fp_safe = thread->is_in_stack_range_excl(addr_fp, addr_sp) &&
-                 thread->is_in_full_stack_checked(addr_fp + (return_addr_offset * sizeof(void*)));
+  bool fp_safe = (fp < thread->stack_base() && (fp > sp) && (((fp + (return_addr_offset * sizeof(void*))) < thread->stack_base())));
 
   // We know sp/unextended_sp are safe only fp is questionable here
 
@@ -147,7 +156,7 @@ bool frame::safe_for_sender(JavaThread *thread) {
 
       sender_sp = _unextended_sp + _cb->frame_size();
       // Is sender_sp safe?
-      if (!thread->is_in_full_stack_checked((address)sender_sp)) {
+      if ((address)sender_sp >= thread->stack_base()) {
         return false;
       }
 
@@ -163,7 +172,10 @@ bool frame::safe_for_sender(JavaThread *thread) {
       // fp is always saved in a recognizable place in any code we generate. However
       // only if the sender is interpreted/call_stub (c1 too?) are we certain that the saved fp
       // is really a frame pointer.
-      if (!thread->is_in_stack_range_excl((address)saved_fp, (address)sender_sp)) {
+
+      bool saved_fp_safe = ((address)saved_fp < thread->stack_base()) && (saved_fp > sender_sp);
+
+      if (!saved_fp_safe) {
         return false;
       }
 
@@ -196,7 +208,9 @@ bool frame::safe_for_sender(JavaThread *thread) {
 
     // Could be the call_stub
     if (StubRoutines::returns_to_call_stub(sender_pc)) {
-      if (!thread->is_in_stack_range_excl((address)saved_fp, (address)sender_sp)) {
+      bool saved_fp_safe = ((address)saved_fp < thread->stack_base()) && (saved_fp > sender_sp);
+
+      if (!saved_fp_safe) {
         return false;
       }
 
