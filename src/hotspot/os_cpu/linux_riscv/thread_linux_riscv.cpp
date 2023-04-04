@@ -61,16 +61,17 @@ bool JavaThread::pd_get_top_frame(frame* fr_addr, void* ucontext, bool isInJava)
 
     intptr_t* ret_fp = NULL;
     intptr_t* ret_sp = NULL;
-    address addr = os::fetch_frame_from_context(uc, &ret_sp, &ret_fp);
-    if (addr == NULL || ret_sp == NULL ) {
+    ExtendedPC addr = os::Linux::fetch_frame_from_ucontext(this, uc,
+      &ret_sp, &ret_fp);
+    if (addr.pc() == NULL || ret_sp == NULL ) {
       // ucontext wasn't useful
       return false;
     }
 
-    frame ret_frame(ret_sp, ret_fp, addr);
+    frame ret_frame(ret_sp, ret_fp, addr.pc());
     if (!ret_frame.safe_for_sender(this)) {
 #ifdef COMPILER2
-      frame ret_frame2(ret_sp, NULL, addr);
+      frame ret_frame2(ret_sp, NULL, addr.pc());
       if (!ret_frame2.safe_for_sender(this)) {
         // nothing else to try if the frame isn't good
         return false;

@@ -37,6 +37,7 @@
 #include "prims/jniFastGetField.hpp"
 #include "prims/jvm_misc.hpp"
 #include "runtime/arguments.hpp"
+#include "runtime/extendedPC.hpp"
 #include "runtime/frame.inline.hpp"
 #include "runtime/interfaceSupport.inline.hpp"
 #include "runtime/java.hpp"
@@ -85,11 +86,11 @@ char* os::non_memory_address_word() {
   return (char*) -1;
 }
 
-address os::Posix::ucontext_get_pc(const ucontext_t * uc) {
+address os::Linux::ucontext_get_pc(const ucontext_t * uc) {
   return (address)uc->uc_mcontext.__gregs[REG_PC];
 }
 
-void os::Posix::ucontext_set_pc(ucontext_t * uc, address pc) {
+void os::Linux::ucontext_set_pc(ucontext_t * uc, address pc) {
   uc->uc_mcontext.__gregs[REG_PC] = (intptr_t)pc;
 }
 
@@ -101,13 +102,29 @@ intptr_t* os::Linux::ucontext_get_fp(const ucontext_t * uc) {
   return (intptr_t*)uc->uc_mcontext.__gregs[REG_FP];
 }
 
-address os::fetch_frame_from_context(const void* ucVoid,
-                                     intptr_t** ret_sp, intptr_t** ret_fp) {
-  address epc;
+// For Forte Analyzer AsyncGetCallTrace profiling support - thread
+// is currently interrupted by SIGPROF.
+// os::Solaris::fetch_frame_from_ucontext() tries to skip nested signal
+// frames. Currently we don't do that on Linux, so it's the same as
+// os::fetch_frame_from_context().
+ExtendedPC os::Linux::fetch_frame_from_ucontext(Thread* thread,
+  const ucontext_t* uc, intptr_t** ret_sp, intptr_t** ret_fp) {
+
+  assert(thread != NULL, "just checking");
+  assert(ret_sp != NULL, "just checking");
+  assert(ret_fp != NULL, "just checking");
+
+  return os::fetch_frame_from_context(uc, ret_sp, ret_fp);
+}
+
+ExtendedPC os::fetch_frame_from_context(const void* ucVoid,
+                    intptr_t** ret_sp, intptr_t** ret_fp) {
+
+  ExtendedPC epc;
   const ucontext_t* uc = (const ucontext_t*)ucVoid;
 
   if (uc != NULL) {
-    epc = os::Posix::ucontext_get_pc(uc);
+    epc = ExtendedPC(os::Linux::ucontext_get_pc(uc));
     if (ret_sp != NULL) {
       *ret_sp = os::Linux::ucontext_get_sp(uc);
     }
@@ -115,7 +132,8 @@ address os::fetch_frame_from_context(const void* ucVoid,
       *ret_fp = os::Linux::ucontext_get_fp(uc);
     }
   } else {
-    epc = NULL;
+    // construct empty ExtendedPC for return value checking
+    epc = ExtendedPC(NULL);
     if (ret_sp != NULL) {
       *ret_sp = (intptr_t *)NULL;
     }
@@ -142,8 +160,8 @@ frame os::fetch_compiled_frame_from_context(const void* ucVoid) {
 frame os::fetch_frame_from_context(const void* ucVoid) {
   intptr_t* frame_sp = NULL;
   intptr_t* frame_fp = NULL;
-  address epc = fetch_frame_from_context(ucVoid, &frame_sp, &frame_fp);
-  return frame(frame_sp, frame_fp, epc);
+  ExtendedPC epc = fetch_frame_from_context(ucVoid, &frame_sp, &frame_fp);
+  return frame(frame_sp, frame_fp, epc.pc());
 }
 
 // By default, gcc always saves frame pointer rfp on this stack. This
@@ -465,7 +483,7 @@ void os::print_context(outputStream *st, const void *context) {
   // Note: it may be unsafe to inspect memory near pc. For example, pc may
   // point to garbage if entry point in an nmethod is corrupted. Leave
   // this at the end, and hope for the best.
-  address pc = os::Posix::ucontext_get_pc(uc);
+  address pc = os::Linux::ucontext_get_pc(uc);
   print_instructions(st, pc, sizeof(char));
   st->cr();
 }
