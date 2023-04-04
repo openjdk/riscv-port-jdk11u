@@ -147,6 +147,8 @@ void VM_Version::initialize() {
 #ifdef COMPILER2
   c2_initialize();
 #endif // COMPILER2
+
+  UNSUPPORTED_OPTION(CriticalJNINatives);
 }
 
 #ifdef COMPILER2
