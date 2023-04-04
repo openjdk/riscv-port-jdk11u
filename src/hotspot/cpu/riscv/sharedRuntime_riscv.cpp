@@ -187,6 +187,16 @@ bool SharedRuntime::is_wide_vector(int size) {
   return false;
 }
 
+size_t SharedRuntime::trampoline_size() {
+  return 6 * NativeInstruction::instruction_size;
+}
+
+void SharedRuntime::generate_trampoline(MacroAssembler *masm, address destination) {
+  int32_t offset = 0;
+  __ movptr_with_offset(t0, destination, offset);
+  __ jalr(x0, t0, offset);
+}
+
 // The java_calling_convention describes stack locations as ideal slots on
 // a frame with no abi restrictions. Since we must observe abi restrictions
 // (like the placement of the register window) the slots must be biased by
