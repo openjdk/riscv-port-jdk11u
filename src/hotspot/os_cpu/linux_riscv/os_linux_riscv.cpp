@@ -48,7 +48,6 @@
 #include "runtime/stubRoutines.hpp"
 #include "runtime/thread.inline.hpp"
 #include "runtime/timer.hpp"
-#include "signals_posix.hpp"
 #include "utilities/debug.hpp"
 #include "utilities/events.hpp"
 #include "utilities/vmError.hpp"
@@ -172,31 +171,138 @@ NOINLINE frame os::current_frame() {
 }
 
 // Utility functions
-bool PosixSignals::pd_hotspot_signal_handler(int sig, siginfo_t* info,
-                                             ucontext_t* uc, JavaThread* thread) {
+extern "C" JNIEXPORT int
+JVM_handle_linux_signal(int sig,
+                        siginfo_t* info,
+                        void* ucVoid,
+                        int abort_if_unrecognized) {
+  ucontext_t* uc = (ucontext_t*) ucVoid;
+
+  Thread* t = Thread::current_or_null_safe();
+
+  // Must do this before SignalHandlerMark, if crash protection installed we will longjmp away
+  // (no destructors can be run)
+  os::ThreadCrashProtection::check_crash_protection(sig, t);
+
+  SignalHandlerMark shm(t);
+
+  // Note: it's not uncommon that JNI code uses signal/sigset to install
+  // then restore certain signal handler (e.g. to temporarily block SIGPIPE,
+  // or have a SIGILL handler when detecting CPU type). When that happens,
+  // JVM_handle_linux_signal() might be invoked with junk info/ucVoid. To
+  // avoid unnecessary crash when libjsig is not preloaded, try handle signals
+  // that do not require siginfo/ucontext first.
+
+  if (sig == SIGPIPE || sig == SIGXFSZ) {
+    // allow chained handler to go first
+    if (os::Linux::chained_handler(sig, info, ucVoid)) {
+      return true;
+    } else {
+      // Ignoring SIGPIPE/SIGXFSZ - see bugs 4229104 or 6499219
+      return true;
+    }
+  }
+
+#ifdef CAN_SHOW_REGISTERS_ON_ASSERT
+  if ((sig == SIGSEGV || sig == SIGBUS) && info != NULL && info->si_addr == g_assert_poison) {
+    if (handle_assert_poison_fault(ucVoid, info->si_addr)) {
+      return 1;
+    }
+  }
+#endif
+
+  JavaThread* thread = NULL;
+  VMThread* vmthread = NULL;
+  if (os::Linux::signal_handlers_are_installed) {
+    if (t != NULL ){
+      if(t->is_Java_thread()) {
+        thread = (JavaThread *) t;
+      }
+      else if(t->is_VM_thread()){
+        vmthread = (VMThread *)t;
+      }
+    }
+  }
+
+  // Handle SafeFetch faults
+  if ((sig == SIGSEGV || sig == SIGBUS) && uc != NULL) {
+    address const pc = (address) os::Linux::ucontext_get_pc(uc);
+    if (pc && StubRoutines::is_safefetch_fault(pc)) {
+      os::Linux::ucontext_set_pc(uc, StubRoutines::continuation_for_safefetch_fault(pc));
+      return 1;
+    }
+  }
 
   // decide if this trap can be handled by a stub
   address stub = NULL;
 
-  address pc = NULL;
+  address pc          = NULL;
 
   //%note os_trap_1
   if (info != NULL && uc != NULL && thread != NULL) {
-    pc = (address) os::Posix::ucontext_get_pc(uc);
-
-    address addr = (address) info->si_addr;
-
-    // Make sure the high order byte is sign extended, as it may be masked away by the hardware.
-    if ((uintptr_t(addr) & (uintptr_t(1) << 55)) != 0) {
-      addr = address(uintptr_t(addr) | (uintptr_t(0xFF) << 56));
-    }
+    pc = (address) os::Linux::ucontext_get_pc(uc);
 
     // Handle ALL stack overflow variations here
     if (sig == SIGSEGV) {
+      address addr = (address) info->si_addr;
+
       // check if fault address is within thread stack
-      if (thread->is_in_full_stack(addr)) {
-        if (os::Posix::handle_stack_overflow(thread, addr, pc, uc, &stub)) {
-          return true; // continue
+      if (thread->on_local_stack(addr)) {
+        // stack overflow
+        if (thread->in_stack_yellow_reserved_zone(addr)) {
+          if (thread->thread_state() == _thread_in_Java) {
+            if (thread->in_stack_reserved_zone(addr)) {
+              frame fr;
+              if (os::Linux::get_frame_at_stack_banging_point(thread, uc, &fr)) {
+                assert(fr.is_java_frame(), "Must be a Java frame");
+                frame activation =
+                  SharedRuntime::look_for_reserved_stack_annotated_method(thread, fr);
+                if (activation.sp() != NULL) {
+                  thread->disable_stack_reserved_zone();
+                  if (activation.is_interpreted_frame()) {
+                    thread->set_reserved_stack_activation((address)(
+                      activation.fp() + frame::interpreter_frame_initial_sp_offset));
+                  } else {
+                    thread->set_reserved_stack_activation((address)activation.unextended_sp());
+                  }
+                  return 1;
+                }
+              }
+            }
+            // Throw a stack overflow exception.  Guard pages will be reenabled
+            // while unwinding the stack.
+            thread->disable_stack_yellow_reserved_zone();
+            stub = SharedRuntime::continuation_for_implicit_exception(thread, pc, SharedRuntime::STACK_OVERFLOW);
+          } else {
+            // Thread was in the vm or native code.  Return and try to finish.
+            thread->disable_stack_yellow_reserved_zone();
+            return 1;
+          }
+        } else if (thread->in_stack_red_zone(addr)) {
+          // Fatal red zone violation.  Disable the guard pages and fall through
+          // to handle_unexpected_exception way down below.
+          thread->disable_stack_red_zone();
+          tty->print_raw_cr("An irrecoverable stack overflow has occurred.");
+
+          // This is a likely cause, but hard to verify. Let's just print
+          // it as a hint.
+          tty->print_raw_cr("Please check if any of your loaded .so files has "
+                            "enabled executable stack (see man page execstack(8))");
+        } else {
+          // Accessing stack address below sp may cause SEGV if current
+          // thread has MAP_GROWSDOWN stack. This should only happen when
+          // current thread was created by user code with MAP_GROWSDOWN flag
+          // and then attached to VM. See notes in os_linux.cpp.
+          if (thread->osthread()->expanding_stack() == 0) {
+             thread->osthread()->set_expanding_stack();
+             if (os::Linux::manually_expand_stack(thread, addr)) {
+               thread->osthread()->clear_expanding_stack();
+               return 1;
+             }
+             thread->osthread()->clear_expanding_stack();
+          } else {
+             fatal("recursive segv. expanding stack.");
+          }
         }
       }
     }
@@ -212,7 +318,7 @@ bool PosixSignals::pd_hotspot_signal_handler(int sig, siginfo_t* info,
           tty->print_cr("trap: zombie_not_entrant (%s)", (sig == SIGTRAP) ? "SIGTRAP" : "SIGILL");
         }
         stub = SharedRuntime::get_handle_wrong_method_stub();
-      } else if (sig == SIGSEGV && SafepointMechanism::is_poll_address((address)info->si_addr)) {
+      } else if (sig == SIGSEGV && os::is_poll_address((address)info->si_addr)) {
         stub = SharedRuntime::get_poll_stub(pc);
       } else if (sig == SIGBUS /* && info->si_code == BUS_OBJERR */) {
         // BugId 4454115: A read from a MappedByteBuffer can fault
@@ -220,34 +326,12 @@ bool PosixSignals::pd_hotspot_signal_handler(int sig, siginfo_t* info,
         // Do not crash the VM in such a case.
         CodeBlob* cb = CodeCache::find_blob_unsafe(pc);
         CompiledMethod* nm = (cb != NULL) ? cb->as_compiled_method_or_null() : NULL;
-        bool is_unsafe_arraycopy = (thread->doing_unsafe_access() && UnsafeCopyMemory::contains_pc(pc));
-        if ((nm != NULL && nm->has_unsafe_access()) || is_unsafe_arraycopy) {
+        if (nm != NULL && nm->has_unsafe_access()) {
           address next_pc = pc + NativeCall::instruction_size;
-          if (is_unsafe_arraycopy) {
-            next_pc = UnsafeCopyMemory::page_error_continue_pc(pc);
-          }
           stub = SharedRuntime::handle_unsafe_access(thread, next_pc);
         }
-      } else if (sig == SIGILL && nativeInstruction_at(pc)->is_stop()) {
-        // Pull a pointer to the error message out of the instruction
-        // stream.
-        const uint64_t *detail_msg_ptr
-          = (uint64_t*)(pc + NativeInstruction::instruction_size);
-        const char *detail_msg = (const char *)*detail_msg_ptr;
-        const char *msg = "stop";
-        if (TraceTraps) {
-          tty->print_cr("trap: %s: (SIGILL)", msg);
-        }
-
-        // End life with a fatal error, message and detail message and the context.
-        // Note: no need to do any post-processing here (e.g. signal chaining)
-        va_list va_dummy;
-        VMError::report_and_die(thread, uc, NULL, 0, msg, detail_msg, va_dummy);
-        va_end(va_dummy);
-
-        ShouldNotReachHere();
       } else if (sig == SIGFPE  &&
-          (info->si_code == FPE_INTDIV || info->si_code == FPE_FLTDIV)) {
+                 (info->si_code == FPE_INTDIV || info->si_code == FPE_FLTDIV)) {
         stub =
           SharedRuntime::
           continuation_for_implicit_exception(thread,
@@ -255,42 +339,70 @@ bool PosixSignals::pd_hotspot_signal_handler(int sig, siginfo_t* info,
                                               SharedRuntime::
                                               IMPLICIT_DIVIDE_BY_ZERO);
       } else if (sig == SIGSEGV &&
-                 MacroAssembler::uses_implicit_null_check((void*)addr)) {
+               !MacroAssembler::needs_explicit_null_check((intptr_t)info->si_addr)) {
           // Determination of interpreter/vtable stub/compiled code null exception
           stub = SharedRuntime::continuation_for_implicit_exception(thread, pc, SharedRuntime::IMPLICIT_NULL);
       }
-    } else if ((thread->thread_state() == _thread_in_vm ||
-                thread->thread_state() == _thread_in_native) &&
-                sig == SIGBUS && /* info->si_code == BUS_OBJERR && */
-                thread->doing_unsafe_access()) {
+    } else if (thread->thread_state() == _thread_in_vm &&
+               sig == SIGBUS && /* info->si_code == BUS_OBJERR && */
+               thread->doing_unsafe_access()) {
       address next_pc = pc + NativeCall::instruction_size;
-      if (UnsafeCopyMemory::contains_pc(pc)) {
-        next_pc = UnsafeCopyMemory::page_error_continue_pc(pc);
-      }
       stub = SharedRuntime::handle_unsafe_access(thread, next_pc);
     }
 
     // jni_fast_Get<Primitive>Field can trap at certain pc's if a GC kicks in
     // and the heap gets shrunk before the field access.
     if ((sig == SIGSEGV) || (sig == SIGBUS)) {
-      address addr_slow = JNI_FastGetField::find_slowcase_pc(pc);
-      if (addr_slow != (address)-1) {
-        stub = addr_slow;
+      address addr = JNI_FastGetField::find_slowcase_pc(pc);
+      if (addr != (address)-1) {
+        stub = addr;
       }
+    }
+
+    // Check to see if we caught the safepoint code in the
+    // process of write protecting the memory serialization page.
+    // It write enables the page immediately after protecting it
+    // so we can just return to retry the write.
+    if ((sig == SIGSEGV) &&
+        os::is_memory_serialize_page(thread, (address) info->si_addr)) {
+      // Block current thread until the memory serialize page permission restored.
+      os::block_on_serialize_page_trap();
+      return true;
     }
   }
 
   if (stub != NULL) {
     // save all thread context in case we need to restore it
-    if (thread != NULL) {
-      thread->set_saved_exception_pc(pc);
-    }
+    if (thread != NULL) thread->set_saved_exception_pc(pc);
 
-    os::Posix::ucontext_set_pc(uc, stub);
+    os::Linux::ucontext_set_pc(uc, stub);
     return true;
   }
 
-  return false; // Mute compiler
+  // signal-chaining
+  if (os::Linux::chained_handler(sig, info, ucVoid)) {
+     return true;
+  }
+
+  if (!abort_if_unrecognized) {
+    // caller wants another chance, so give it to him
+    return false;
+  }
+
+  if (pc == NULL && uc != NULL) {
+    pc = os::Linux::ucontext_get_pc(uc);
+  }
+
+  // unmask current signal
+  sigset_t newset;
+  sigemptyset(&newset);
+  sigaddset(&newset, sig);
+  sigprocmask(SIG_UNBLOCK, &newset, NULL);
+
+  VMError::report_and_die(t, sig, pc, info, ucVoid);
+
+  ShouldNotReachHere();
+  return true; // Mute compiler
 }
 
 void os::Linux::init_thread_fpu_state(void) {
