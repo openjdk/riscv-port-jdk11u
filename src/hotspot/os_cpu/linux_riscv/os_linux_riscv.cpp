@@ -145,23 +145,51 @@ ExtendedPC os::fetch_frame_from_context(const void* ucVoid,
   return epc;
 }
 
-frame os::fetch_compiled_frame_from_context(const void* ucVoid) {
-  const ucontext_t* uc = (const ucontext_t*)ucVoid;
-  // In compiled code, the stack banging is performed before RA
-  // has been saved in the frame. RA is live, and SP and FP
-  // belong to the caller.
-  intptr_t* frame_fp = os::Linux::ucontext_get_fp(uc);
-  intptr_t* frame_sp = os::Linux::ucontext_get_sp(uc);
-  address frame_pc = (address)(uc->uc_mcontext.__gregs[REG_LR]
-                         - NativeInstruction::instruction_size);
-  return frame(frame_sp, frame_fp, frame_pc);
-}
-
 frame os::fetch_frame_from_context(const void* ucVoid) {
   intptr_t* frame_sp = NULL;
   intptr_t* frame_fp = NULL;
   ExtendedPC epc = fetch_frame_from_context(ucVoid, &frame_sp, &frame_fp);
   return frame(frame_sp, frame_fp, epc.pc());
+}
+
+bool os::Linux::get_frame_at_stack_banging_point(JavaThread* thread, ucontext_t* uc, frame* fr) {
+  address pc = (address) os::Linux::ucontext_get_pc(uc);
+  if (Interpreter::contains(pc)) {
+    // interpreter performs stack banging after the fixed frame header has
+    // been generated while the compilers perform it before. To maintain
+    // semantic consistency between interpreted and compiled frames, the
+    // method returns the Java sender of the current frame.
+    *fr = os::fetch_frame_from_context(uc);
+    if (!fr->is_first_java_frame()) {
+      assert(fr->safe_for_sender(thread), "Safety check");
+      *fr = fr->java_sender();
+    }
+  } else {
+    // more complex code with compiled code
+    assert(!Interpreter::contains(pc), "Interpreted methods should have been handled above");
+    CodeBlob* cb = CodeCache::find_blob(pc);
+    if (cb == NULL || !cb->is_nmethod() || cb->is_frame_complete_at(pc)) {
+      // Not sure where the pc points to, fallback to default
+      // stack overflow handling
+      return false;
+    } else {
+      // In compiled code, the stack banging is performed before RA
+      // has been saved in the frame.  RA is live, and SP and FP
+      // belong to the caller.
+      intptr_t* fp = os::Linux::ucontext_get_fp(uc);
+      intptr_t* sp = os::Linux::ucontext_get_sp(uc);
+      address pc = (address)(uc->uc_mcontext.__gregs[REG_LR]
+                         - NativeInstruction::instruction_size);
+      *fr = frame(sp, fp, pc);
+      if (!fr->is_java_frame()) {
+        assert(fr->safe_for_sender(thread), "Safety check");
+        assert(!fr->is_first_frame(), "Safety check");
+        *fr = fr->java_sender();
+      }
+    }
+  }
+  assert(fr->is_java_frame(), "Safety check");
+  return true;
 }
 
 // By default, gcc always saves frame pointer rfp on this stack. This
