@@ -1049,12 +1049,7 @@ class StubGenerator: public StubCodeGenerator {
       __ push_reg(RegSet::of(d, count), sp);
     }
 
-    {
-      // UnsafeCopyMemory page error: continue after ucm
-      bool add_entry = !is_oop && (!aligned || sizeof(jlong) == size);
-      UnsafeCopyMemoryMark ucmm(this, add_entry, true);
-      copy_memory(aligned, s, d, count, t0, size);
-    }
+    copy_memory(aligned, s, d, count, t0, size);
 
     if (is_oop) {
       __ pop_reg(RegSet::of(d, count), sp);
@@ -1122,12 +1117,7 @@ class StubGenerator: public StubCodeGenerator {
       __ push_reg(RegSet::of(d, count), sp);
     }
 
-    {
-      // UnsafeCopyMemory page error: continue after ucm
-      bool add_entry = !is_oop && (!aligned || sizeof(jlong) == size);
-      UnsafeCopyMemoryMark ucmm(this, add_entry, true);
-      copy_memory(aligned, s, d, count, t0, -size);
-    }
+    copy_memory(aligned, s, d, count, t0, -size);
 
     if (is_oop) {
       __ pop_reg(RegSet::of(d, count), sp);
@@ -3734,11 +3724,6 @@ class StubGenerator: public StubCodeGenerator {
   ~StubGenerator() {}
 }; // end class declaration
 
-#define UCM_TABLE_MAX_ENTRIES 8
 void StubGenerator_generate(CodeBuffer* code, bool all) {
-  if (UnsafeCopyMemory::_table == NULL) {
-    UnsafeCopyMemory::create_table(UCM_TABLE_MAX_ENTRIES);
-  }
-
   StubGenerator g(code, all);
 }
