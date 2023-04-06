@@ -1632,7 +1632,7 @@ void MacroAssembler::movoop(Register dst, jobject obj, bool immediate) {
 #ifdef ASSERT
     {
       ThreadInVMfromUnknown tiv;
-      assert(Universe::heap()->is_in(JNIHandles::resolve(obj)), "should be real oop");
+      assert(Universe::heap()->is_in_reserved(JNIHandles::resolve(obj)), "should be real oop");
     }
 #endif
     oop_index = oop_recorder()->find_index(obj);
@@ -2800,7 +2800,7 @@ void  MacroAssembler::set_narrow_oop(Register dst, jobject obj) {
     assert (UseCompressedOops, "should only be used for compressed oops");
     assert (Universe::heap() != NULL, "java heap should be initialized");
     assert (oop_recorder() != NULL, "this assembler needs an OopRecorder");
-    assert(Universe::heap()->is_in(JNIHandles::resolve(obj)), "should be real oop");
+    assert(Universe::heap()->is_in_reserved(JNIHandles::resolve(obj)), "should be real oop");
   }
 #endif
   int oop_index = oop_recorder()->find_index(obj);
@@ -2815,7 +2815,7 @@ void  MacroAssembler::set_narrow_klass(Register dst, Klass* k) {
   assert (UseCompressedClassPointers, "should only be used for compressed headers");
   assert (oop_recorder() != NULL, "this assembler needs an OopRecorder");
   int index = oop_recorder()->find_index(k);
-  assert(!Universe::heap()->is_in(k), "should not be an oop");
+  assert(!Universe::heap()->is_in_reserved(k), "should not be an oop");
 
   InstructionMark im(this);
   RelocationHolder rspec = metadata_Relocation::spec(index);
