@@ -2352,50 +2352,6 @@ class StubGenerator: public StubCodeGenerator {
     return entry;
   }
 
-  address generate_method_entry_barrier() {
-    __ align(CodeEntryAlignment);
-    StubCodeMark mark(this, "StubRoutines", "nmethod_entry_barrier");
-
-    Label deoptimize_label;
-
-    address start = __ pc();
-
-    __ set_last_Java_frame(sp, fp, ra, t0);
-
-    __ enter();
-    __ add(t1, sp, wordSize);
-
-    __ sub(sp, sp, 4 * wordSize);
-
-    __ push_call_clobbered_registers();
-
-    __ mv(c_rarg0, t1);
-    __ call_VM_leaf(CAST_FROM_FN_PTR(address, BarrierSetNMethod::nmethod_stub_entry_barrier), 1);
-
-    __ reset_last_Java_frame(true);
-
-    __ mv(t0, x10);
-
-    __ pop_call_clobbered_registers();
-
-    __ bnez(t0, deoptimize_label);
-
-    __ leave();
-    __ ret();
-
-    __ BIND(deoptimize_label);
-
-    __ ld(t0, Address(sp, 0));
-    __ ld(fp, Address(sp, wordSize));
-    __ ld(ra, Address(sp, wordSize * 2));
-    __ ld(t1, Address(sp, wordSize * 3));
-
-    __ mv(sp, t0);
-    __ jr(t1);
-
-    return start;
-  }
-
   // x10  = result
   // x11  = str1
   // x12  = cnt1
@@ -3702,11 +3658,6 @@ class StubGenerator: public StubCodeGenerator {
     generate_compare_long_strings();
 
     generate_string_indexof_stubs();
-
-    BarrierSetNMethod* bs_nm = BarrierSet::barrier_set()->barrier_set_nmethod();
-    if (bs_nm != NULL) {
-      StubRoutines::riscv::_method_entry_barrier = generate_method_entry_barrier();
-    }
 
     StubRoutines::riscv::set_completed();
   }

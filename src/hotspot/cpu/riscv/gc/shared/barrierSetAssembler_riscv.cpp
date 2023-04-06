@@ -27,7 +27,6 @@
 #include "classfile/classLoaderData.hpp"
 #include "gc/shared/barrierSet.hpp"
 #include "gc/shared/barrierSetAssembler.hpp"
-#include "gc/shared/barrierSetNMethod.hpp"
 #include "gc/shared/collectedHeap.hpp"
 #include "interpreter/interp_masm.hpp"
 #include "memory/universe.hpp"
@@ -229,74 +228,4 @@ void BarrierSetAssembler::incr_allocated_bytes(MacroAssembler* masm,
     __ add(tmp1, tmp1, con_size_in_bytes);
   }
   __ sd(tmp1, Address(xthread, in_bytes(JavaThread::allocated_bytes_offset())));
-}
-
-void BarrierSetAssembler::nmethod_entry_barrier(MacroAssembler* masm) {
-  BarrierSetNMethod* bs_nm = BarrierSet::barrier_set()->barrier_set_nmethod();
-
-  if (bs_nm == NULL) {
-    return;
-  }
-
-  // RISCV atomic operations require that the memory address be naturally aligned.
-  __ align(4);
-
-  Label skip, guard;
-  Address thread_disarmed_addr(xthread, in_bytes(bs_nm->thread_disarmed_offset()));
-
-  __ lwu(t0, guard);
-
-  // Subsequent loads of oops must occur after load of guard value.
-  // BarrierSetNMethod::disarm sets guard with release semantics.
-  __ membar(MacroAssembler::LoadLoad);
-  __ lwu(t1, thread_disarmed_addr);
-  __ beq(t0, t1, skip);
-
-  int32_t offset = 0;
-  __ movptr_with_offset(t0, StubRoutines::riscv::method_entry_barrier(), offset);
-  __ jalr(ra, t0, offset);
-  __ j(skip);
-
-  __ bind(guard);
-
-  assert(__ offset() % 4 == 0, "bad alignment");
-  __ emit_int32(0); // nmethod guard value. Skipped over in common case.
-
-  __ bind(skip);
-}
-
-void BarrierSetAssembler::c2i_entry_barrier(MacroAssembler* masm) {
-  BarrierSetNMethod* bs = BarrierSet::barrier_set()->barrier_set_nmethod();
-  if (bs == NULL) {
-    return;
-  }
-
-  Label bad_call;
-  __ beqz(xmethod, bad_call);
-
-  // Pointer chase to the method holder to find out if the method is concurrently unloading.
-  Label method_live;
-  __ load_method_holder_cld(t0, xmethod);
-
-  // Is it a strong CLD?
-  __ lwu(t1, Address(t0, ClassLoaderData::keep_alive_offset()));
-  __ bnez(t1, method_live);
-
-  // Is it a weak but alive CLD?
-  __ push_reg(RegSet::of(x28, x29), sp);
-
-  __ ld(x28, Address(t0, ClassLoaderData::holder_offset()));
-
-  // Uses x28 & x29, so we must pass new temporaries.
-  __ resolve_weak_handle(x28, x29);
-  __ mv(t0, x28);
-
-  __ pop_reg(RegSet::of(x28, x29), sp);
-
-  __ bnez(t0, method_live);
-
-  __ bind(bad_call);
-
-  __ far_jump(RuntimeAddress(SharedRuntime::get_handle_wrong_method_stub()));
-  __ bind(method_live);
 }

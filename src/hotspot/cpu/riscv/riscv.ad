@@ -1068,17 +1068,6 @@ void MachPrologNode::format(PhaseRegAlloc *ra_, outputStream *st) const {
   st->print("sd  ra, [sp, #%d]\n\t", - wordSize);
   if (PreserveFramePointer) { st->print("sub  fp, sp, #%d\n\t", 2 * wordSize); }
   st->print("sub sp, sp, #%d\n\t", framesize);
-
-  if (C->stub_function() == NULL && BarrierSet::barrier_set()->barrier_set_nmethod() != NULL) {
-    st->print("ld  t0, [guard]\n\t");
-    st->print("membar LoadLoad\n\t");
-    st->print("ld  t1, [xthread, #thread_disarmed_offset]\n\t");
-    st->print("beq t0, t1, skip\n\t");
-    st->print("jalr #nmethod_entry_barrier_stub\n\t");
-    st->print("j skip\n\t");
-    st->print("guard: int\n\t");
-    st->print("skip:\n\t");
-  }
 }
 #endif
 
@@ -1113,11 +1102,6 @@ void MachPrologNode::emit(CodeBuffer &cbuf, PhaseRegAlloc *ra_) const {
   }
 
   __ build_frame(framesize);
-
-  if (C->stub_function() == NULL) {
-    BarrierSetAssembler* bs = BarrierSet::barrier_set()->barrier_set_assembler();
-    bs->nmethod_entry_barrier(&_masm);
-  }
 
   if (VerifyStackAtCalls) {
     Unimplemented();

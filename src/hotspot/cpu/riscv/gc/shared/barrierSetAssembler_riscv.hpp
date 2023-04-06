@@ -28,7 +28,6 @@
 
 #include "asm/macroAssembler.hpp"
 #include "gc/shared/barrierSet.hpp"
-#include "gc/shared/barrierSetNMethod.hpp"
 #include "memory/allocation.hpp"
 #include "oops/access.hpp"
 
@@ -71,8 +70,6 @@ public:
   );
   virtual void barrier_stubs_init() {}
 
-  virtual void nmethod_entry_barrier(MacroAssembler* masm);
-  virtual void c2i_entry_barrier(MacroAssembler* masm);
   virtual ~BarrierSetAssembler() {}
 };
 
