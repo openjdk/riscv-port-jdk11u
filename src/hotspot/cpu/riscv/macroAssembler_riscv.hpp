@@ -207,7 +207,6 @@ class MacroAssembler: public Assembler {
   virtual void check_and_handle_earlyret(Register java_thread);
   virtual void check_and_handle_popframe(Register java_thread);
 
-  void resolve_weak_handle(Register result, Register tmp);
   void resolve_oop_handle(Register result, Register tmp = x15);
   void resolve_jobject(Register value, Register thread, Register tmp);
 
@@ -673,7 +672,6 @@ class MacroAssembler: public Assembler {
   void cmpptr(Register src1, Address src2, Label& equal);
 
   void clinit_barrier(Register klass, Register tmp, Label* L_fast_path = NULL, Label* L_slow_path = NULL);
-  void load_method_holder_cld(Register result, Register method);
   void load_method_holder(Register holder, Register method);
 
   void compute_index(Register str1, Register trailing_zeros, Register match_mask,

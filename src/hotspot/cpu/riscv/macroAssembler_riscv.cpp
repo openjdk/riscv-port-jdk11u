@@ -1638,10 +1638,10 @@ void MacroAssembler::cmp_klass(Register oop, Register trial_klass, Register tmp,
   beq(trial_klass, tmp, L);
 }
 
-// Move an oop into a register. immediate is true if we want
-// immediate instructions and nmethod entry barriers are not enabled.
-// i.e. we are not going to patch this instruction while the code is being
-// executed by another thread.
+// Move an oop into a register.  immediate is true if we want
+// immediate instructions, i.e. we are not going to patch this
+// instruction while the code is being executed by another thread.  In
+// that case we can use move immediates rather than the constant pool.
 void MacroAssembler::movoop(Register dst, jobject obj, bool immediate) {
   int oop_index;
   if (obj == NULL) {
@@ -1656,11 +1656,7 @@ void MacroAssembler::movoop(Register dst, jobject obj, bool immediate) {
     oop_index = oop_recorder()->find_index(obj);
   }
   RelocationHolder rspec = oop_Relocation::spec(oop_index);
-
-  // nmethod entry barrier necessitate using the constant pool. They have to be
-  // ordered with respected to oop access.
-  // Using immediate literals would necessitate fence.i.
-  if (BarrierSet::barrier_set()->barrier_set_nmethod() != NULL || !immediate) {
+  if (!immediate) {
     address dummy = address(uintptr_t(pc()) & -wordSize); // A nearby aligned address
     ld_constant(dst, Address(dummy, rspec));
   } else
@@ -1736,22 +1732,6 @@ void MacroAssembler::resolve_oop_handle(Register result, Register tmp) {
   // OopHandle::resolve is an indirection.
   assert_different_registers(result, tmp);
   access_load_at(T_OBJECT, IN_NATIVE, result, Address(result, 0), tmp, noreg);
-}
-
-// ((WeakHandle)result).resolve()
-void MacroAssembler::resolve_weak_handle(Register result, Register tmp) {
-  assert_different_registers(result, tmp);
-  Label resolved;
-
-  // A null weak handle resolves to null.
-  beqz(result, resolved);
-
-  // Only 64 bit platforms support GCs that require a tmp register
-  // Only IN_HEAP loads require a thread_tmp register
-  // WeakHandle::resolve is an indirection like jweak.
-  access_load_at(T_OBJECT, IN_NATIVE | ON_PHANTOM_OOP_REF,
-                 result, Address(result), tmp, noreg /* tmp_thread */);
-  bind(resolved);
 }
 
 void MacroAssembler::access_load_at(BasicType type, DecoratorSet decorators,
@@ -3193,11 +3173,6 @@ void MacroAssembler::cmpptr(Register src1, Address src2, Label& equal) {
   la_patchable(t0, src2, offset);
   ld(t0, Address(t0, offset));
   beq(src1, t0, equal);
-}
-
-void MacroAssembler::load_method_holder_cld(Register result, Register method) {
-  load_method_holder(result, method);
-  ld(result, Address(result, InstanceKlass::class_loader_data_offset()));
 }
 
 void MacroAssembler::load_method_holder(Register holder, Register method) {
