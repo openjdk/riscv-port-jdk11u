@@ -1382,6 +1382,11 @@ void LIR_Assembler::ic_call(LIR_OpJavaCall* op) {
   add_call_info(code_offset(), op->info());
 }
 
+/* Currently, vtable-dispatch is only enabled for sparc platforms */
+void LIR_Assembler::vtable_call(LIR_OpJavaCall* op) {
+  ShouldNotReachHere();
+}
+
 void LIR_Assembler::emit_static_call_stub() {
   address call_pc = __ pc();
   assert((__ offset() % 4) == 0, "bad alignment");
