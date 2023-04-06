@@ -1580,6 +1580,11 @@ const uint Matcher::vector_ideal_reg(int len) {
   return 0;
 }
 
+const uint Matcher::vector_shift_count_ideal_reg(int size) {
+  fatal("vector shift is not supported");
+  return Node::NotAMachineReg;
+}
+
 // AES support not yet implemented
 const bool Matcher::pass_original_key_for_aes() {
   return false;
