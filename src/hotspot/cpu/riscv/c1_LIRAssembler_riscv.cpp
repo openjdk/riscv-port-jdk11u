@@ -2019,6 +2019,18 @@ address LIR_Assembler::int_constant(jlong n) {
   }
 }
 
+void LIR_Assembler::set_24bit_FPU() { Unimplemented(); }
+
+void LIR_Assembler::reset_FPU() { Unimplemented(); }
+
+void LIR_Assembler::fpop() { Unimplemented(); }
+
+void LIR_Assembler::fxch(int i) { Unimplemented(); }
+
+void LIR_Assembler::fld(int i) { Unimplemented(); }
+
+void LIR_Assembler::ffree(int i) { Unimplemented(); }
+
 void LIR_Assembler::casw(Register addr, Register newval, Register cmpval) {
   __ cmpxchg(addr, cmpval, newval, Assembler::int32, Assembler::aq /* acquire */,
              Assembler::rl /* release */, t0, true /* result as bool */);
