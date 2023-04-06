@@ -3027,6 +3027,13 @@ public:
   Assembler(CodeBuffer* code) : AbstractAssembler(code), _in_compressible_region(false) {
   }
 
+  virtual RegisterOrConstant delayed_value_impl(intptr_t* delayed_value_addr,
+                                                Register tmp,
+                                                int offset) {
+    ShouldNotCallThis();
+    return RegisterOrConstant();
+  }
+
   // Stack overflow checking
   virtual void bang_stack_with_offset(int offset) { Unimplemented(); }
 

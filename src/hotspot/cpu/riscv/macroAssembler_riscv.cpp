@@ -191,6 +191,22 @@ void MacroAssembler::call_VM(Register oop_result,
 void MacroAssembler::check_and_handle_earlyret(Register java_thread) {}
 void MacroAssembler::check_and_handle_popframe(Register java_thread) {}
 
+RegisterOrConstant MacroAssembler::delayed_value_impl(intptr_t* delayed_value_addr,
+                                                      Register tmp,
+                                                      int offset) {
+  intptr_t value = *delayed_value_addr;
+  if (value != 0)
+    return RegisterOrConstant(value + offset);
+
+  // load indirectly to solve generation ordering problem
+  ld(tmp, ExternalAddress((address) delayed_value_addr));
+
+  if (offset != 0)
+    add(tmp, tmp, offset);
+
+  return RegisterOrConstant(tmp);
+}
+
 // Calls to C land
 //
 // When entering C land, the fp, & esp of the last Java frame have to be recorded

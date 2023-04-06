@@ -625,6 +625,10 @@ class MacroAssembler: public Assembler {
 
   void reserved_stack_check();
 
+  virtual RegisterOrConstant delayed_value_impl(intptr_t* delayed_value_addr,
+                                                Register tmp,
+                                                int offset);
+
   void get_polling_page(Register dest, address page, int32_t &offset, relocInfo::relocType rtype);
   void read_polling_page(Register r, address page, relocInfo::relocType rtype);
   void read_polling_page(Register r, int32_t offset, relocInfo::relocType rtype);
