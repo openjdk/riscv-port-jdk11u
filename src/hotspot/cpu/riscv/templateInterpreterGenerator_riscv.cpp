@@ -1134,15 +1134,6 @@ address TemplateInterpreterGenerator::generate_native_entry(bool synchronized) {
   // check for safepoint operation in progress and/or pending suspend requests
   {
     Label L, Continue;
-
-    // We need an acquire here to ensure that any subsequent load of the
-    // global SafepointSynchronize::_state flag is ordered after this load
-    // of the thread-local polling word. We don't want this poll to
-    // return false (i.e. not safepointing) and a later poll of the global
-    // SafepointSynchronize::_state spuriously to return true.
-    //
-    // This is to avoid a race when we're in a native->Java transition
-    // racing the code which wakes up from a safepoint.
     __ safepoint_poll_acquire(L);
     __ lwu(t1, Address(xthread, JavaThread::suspend_flags_offset()));
     __ beqz(t1, Continue);
