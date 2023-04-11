@@ -495,8 +495,8 @@ frame frame::sender_for_compiled_frame(RegisterMap* map) const {
 }
 
 //------------------------------------------------------------------------------
-// frame::sender_raw
-frame frame::sender_raw(RegisterMap* map) const {
+// frame::sender
+frame frame::sender(RegisterMap* map) const {
   // Default is we done have to follow them. The sender_for_xxx will
   // update it accordingly
   assert(map != NULL, "map must be set");
@@ -519,10 +519,6 @@ frame frame::sender_raw(RegisterMap* map) const {
   // Must be native-compiled frame, i.e. the marshaling code for native
   // methods that exists in the core system.
   return frame(sender_sp(), link(), sender_pc());
-}
-
-frame frame::sender(RegisterMap* map) const {
-  return sender_raw(map);
 }
 
 bool frame::is_interpreted_frame_valid(JavaThread* thread) const {

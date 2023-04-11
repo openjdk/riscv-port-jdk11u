@@ -571,7 +571,6 @@ void InterpreterMacroAssembler::dispatch_via(TosState state, address* table) {
 
 // remove activation
 //
-// Apply stack watermark barrier.
 // Unlock the receiver if this is a synchronized method.
 // Unlock any Java monitors from syncronized blocks.
 // Remove the activation from the stack.
