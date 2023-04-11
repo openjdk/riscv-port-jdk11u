@@ -1818,6 +1818,7 @@ void LIR_Assembler::leal(LIR_Opr addr, LIR_Opr dest, LIR_PatchCode patch_code, C
     return;
   }
 
+  assert(patch_code == lir_patch_none, "Patch code not supported");
   LIR_Address* adr = addr->as_address_ptr();
   Register dst = dest->as_register_lo();
 
