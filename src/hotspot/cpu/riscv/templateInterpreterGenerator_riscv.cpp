@@ -765,9 +765,18 @@ void TemplateInterpreterGenerator::generate_fixed_frame(bool native_call) {
   __ sd(ProfileInterpreter ? t0 : zr, Address(sp, 6 * wordSize));
 
   // Get mirror and store it in the frame as GC root for this Method*
-  __ load_mirror(t2, xmethod);
-  __ sd(zr, Address(sp, 5 * wordSize));
-  __ sd(t2, Address(sp, 4 * wordSize));
+#if INCLUDE_SHENANDOAHGC
+  if (UseShenandoahGC) {
+    __ load_mirror(x28, xmethod);
+    __ sd(zr, Address(sp, 5 * wordSize));
+    __ sd(x28, Address(sp, 4 * wordSize));
+  } else
+#endif
+  {
+    __ load_mirror(t2, xmethod);
+    __ sd(zr, Address(sp, 5 * wordSize));
+    __ sd(t2, Address(sp, 4 * wordSize));
+  }
 
   __ ld(xcpool, Address(xmethod, Method::const_offset()));
   __ ld(xcpool, Address(xcpool, ConstMethod::constants_offset()));

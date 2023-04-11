@@ -1817,10 +1817,12 @@ void LIR_Assembler::negate(LIR_Opr left, LIR_Opr dest, LIR_Opr tmp) {
 
 
 void LIR_Assembler::leal(LIR_Opr addr, LIR_Opr dest, LIR_PatchCode patch_code, CodeEmitInfo* info) {
-  if (patch_code != lir_patch_none) {
+#if INCLUDE_SHENANDOAHGC
+  if (UseShenandoahGC && patch_code != lir_patch_none) {
     deoptimize_trap(info);
     return;
   }
+#endif
 
   assert(patch_code == lir_patch_none, "Patch code not supported");
   LIR_Address* adr = addr->as_address_ptr();
