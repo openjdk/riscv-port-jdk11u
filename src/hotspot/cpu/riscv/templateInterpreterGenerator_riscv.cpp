@@ -1143,7 +1143,7 @@ address TemplateInterpreterGenerator::generate_native_entry(bool synchronized) {
     //
     // This is to avoid a race when we're in a native->Java transition
     // racing the code which wakes up from a safepoint.
-    __ safepoint_poll(L, true /* at_return */, true /* acquire */, false /* in_nmethod */);
+    __ safepoint_poll_acquire(L);
     __ lwu(t1, Address(xthread, JavaThread::suspend_flags_offset()));
     __ beqz(t1, Continue);
     __ bind(L);

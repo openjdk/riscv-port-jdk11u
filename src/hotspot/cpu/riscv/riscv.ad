@@ -1213,6 +1213,14 @@ const Pipeline * MachEpilogNode::pipeline() const {
   return MachNode::pipeline_class();
 }
 
+// This method seems to be obsolete. It is declared in machnode.hpp
+// and defined in all *.ad files, but it is never called. Should we
+// get rid of it?
+int MachEpilogNode::safepoint_offset() const {
+  assert(do_polling(), "no return for this epilog node");
+  return 4;
+}
+
 //=============================================================================
 
 // Figure out which register class each belongs in: rc_int, rc_float or
@@ -1905,6 +1913,17 @@ encode %{
     Assembler::CompressibleRegion cr(&_masm);
     Register dst_reg = as_Register($dst$$reg);
     __ li(dst_reg, 1);
+  %}
+
+  enc_class riscv_enc_mov_poll_page(iRegP dst, immPollPage src) %{
+    MacroAssembler _masm(&cbuf);
+    int32_t offset = 0;
+    address page = (address)$src$$constant;
+    unsigned long align = (unsigned long)page & 0xfff;
+    assert(align == 0, "polling page must be page aligned");
+    Register dst_reg = as_Register($dst$$reg);
+    __ la_patchable(dst_reg, Address(page, relocInfo::poll_type), offset);
+    __ addi(dst_reg, dst_reg, offset);
   %}
 
   enc_class riscv_enc_mov_byte_map_base(iRegP dst) %{
@@ -2681,6 +2700,17 @@ operand immP0()
 operand immP_1()
 %{
   predicate(n->get_ptr() == 1);
+  match(ConP);
+
+  op_cost(0);
+  format %{ %}
+  interface(CONST_INTER);
+%}
+
+// Polling Page Pointer Immediate
+operand immPollPage()
+%{
+  predicate((address)n->get_ptr() == os::get_polling_page());
   match(ConP);
 
   op_cost(0);
@@ -4472,6 +4502,19 @@ instruct loadConP1(iRegPNoSp dst, immP_1 con)
   format %{ "mv  $dst, $con\t# load ptr constant one, #@loadConP1" %}
 
   ins_encode(riscv_enc_mov_p1(dst));
+
+  ins_pipe(ialu_imm);
+%}
+
+// Load Poll Page Constant
+instruct loadConPollPage(iRegPNoSp dst, immPollPage con)
+%{
+  match(Set dst con);
+
+  ins_cost(ALU_COST * 6);
+  format %{ "movptr  $dst, $con\t# Poll Page Ptr, #@loadConPollPage" %}
+
+  ins_encode(riscv_enc_mov_poll_page(dst, con));
 
   ins_pipe(ialu_imm);
 %}
