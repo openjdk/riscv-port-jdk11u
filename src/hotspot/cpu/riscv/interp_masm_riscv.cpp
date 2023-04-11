@@ -515,7 +515,8 @@ void InterpreterMacroAssembler::dispatch_base(TosState state,
 
   Label safepoint;
   address* const safepoint_table = Interpreter::safept_table(state);
-  bool needs_thread_local_poll = generate_poll && table != safepoint_table;
+  bool needs_thread_local_poll = generate_poll &&
+    SafepointMechanism::uses_thread_local_poll() && table != safepoint_table;
 
   if (needs_thread_local_poll) {
     NOT_PRODUCT(block_comment("Thread-local Safepoint poll"));

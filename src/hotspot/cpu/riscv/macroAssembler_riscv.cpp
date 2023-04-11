@@ -264,6 +264,30 @@ void MacroAssembler::set_last_Java_frame(Register last_java_sp,
   }
 }
 
+// Just like safepoint_poll, but use an acquiring load for thread-
+// local polling.
+//
+// We need an acquire here to ensure that any subsequent load of the
+// global SafepointSynchronize::_state flag is ordered after this load
+// of the local Thread::_polling page.  We don't want this poll to
+// return false (i.e. not safepointing) and a later poll of the global
+// SafepointSynchronize::_state spuriously to return true.
+//
+// This is to avoid a race when we're in a native->Java transition
+// racing the code which wakes up from a safepoint.
+//
+void MacroAssembler::safepoint_poll_acquire(Label& slow_path) {
+  if (SafepointMechanism::uses_thread_local_poll()) {
+    membar(MacroAssembler::AnyAny);
+    ld(t1, Address(xthread, Thread::polling_page_offset()));
+    membar(MacroAssembler::LoadLoad | MacroAssembler::LoadStore);
+    andi(t0, t1, SafepointMechanism::poll_bit());
+    bnez(t0, slow_path);
+  } else {
+    safepoint_poll(slow_path);
+  }
+}
+
 void MacroAssembler::reset_last_Java_frame(bool clear_fp) {
   // we must set sp to zero to clear frame
   sd(zr, Address(xthread, JavaThread::last_Java_sp_offset()));
@@ -2137,7 +2161,7 @@ void MacroAssembler::check_klass_subtype(Register sub_klass,
   bind(L_failure);
 }
 
-void MacroAssembler::safepoint_poll(Label& slow_path, bool at_return, bool acquire, bool in_nmethod) {
+void MacroAssembler::safepoint_poll(Label& slow_path) {
   if (SafepointMechanism::uses_thread_local_poll()) {
     ld(t1, Address(xthread, Thread::polling_page_offset()));
     andi(t0, t1, SafepointMechanism::poll_bit());

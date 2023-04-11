@@ -44,7 +44,8 @@ class MacroAssembler: public Assembler {
   }
   virtual ~MacroAssembler() {}
 
-  void safepoint_poll(Label& slow_path, bool at_return, bool acquire, bool in_nmethod);
+  void safepoint_poll(Label& slow_path);
+  void safepoint_poll_acquire(Label& slow_path);
 
   // Place a fence.i after code may have been modified due to a safepoint.
   void safepoint_ifence();

@@ -1573,7 +1573,7 @@ nmethod* SharedRuntime::generate_native_wrapper(MacroAssembler* masm,
     // This is to avoid a race when we're in a native->Java transition
     // racing the code which wakes up from a safepoint.
 
-    __ safepoint_poll(safepoint_in_progress, true /* at_return */, true /* acquire */, false /* in_nmethod */);
+    __ safepoint_poll_acquire(safepoint_in_progress);
     __ lwu(t0, Address(xthread, JavaThread::suspend_flags_offset()));
     __ bnez(t0, safepoint_in_progress);
     __ bind(safepoint_in_progress_done);
@@ -2439,7 +2439,7 @@ SafepointBlob* SharedRuntime::generate_handler_blob(address call_ptr, int poll_t
   __ bind(noException);
 
   Label no_adjust, bail;
-  if (!cause_return) {
+  if (SafepointMechanism::uses_thread_local_poll() && !cause_return) {
     // If our stashed return pc was modified by the runtime we avoid touching it
     __ ld(t0, Address(fp, frame::return_addr_offset * wordSize));
     __ bne(x18, t0, no_adjust);
