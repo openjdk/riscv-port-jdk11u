@@ -581,37 +581,80 @@ OopMapSet* Runtime1::generate_patching(StubAssembler* sasm, address target) {
 #endif
   __ reset_last_Java_frame(true);
 
-#ifdef ASSERT
-  // Check that fields in JavaThread for exception oop and issuing pc are empty
-  Label oop_empty;
-  __ ld(t0, Address(xthread, Thread::pending_exception_offset()));
-  __ beqz(t0, oop_empty);
-  __ stop("exception oop must be empty");
-  __ bind(oop_empty);
+  // check for pending exceptions
+  { Label L;
+    __ ld(t0, Address(xthread, Thread::pending_exception_offset()));
+    __ beqz(t0, L);
+    // exception pending => remove activation and forward to exception handler
 
-  Label pc_empty;
-  __ ld(t0, Address(xthread, JavaThread::exception_pc_offset()));
-  __ beqz(t0, pc_empty);
-  __ stop("exception pc must be empty");
-  __ bind(pc_empty);
+    { Label L1;
+      __ bnez(x10, L1);                                 // have we deoptimized?
+      __ far_jump(RuntimeAddress(Runtime1::entry_for(Runtime1::forward_exception_id)));
+      __ bind(L1);
+    }
+
+    // the deopt blob expects exceptions in the special fields of
+    // JavaThread, so copy and clear pending exception.
+
+    // load and clear pending exception
+    __ ld(x10, Address(xthread, Thread::pending_exception_offset()));
+    __ sd(zr, Address(xthread, Thread::pending_exception_offset()));
+
+    // check that there is really a valid exception
+    __ verify_not_null_oop(x10);
+
+    // load throwing pc: this is the return address of the stub
+    __ ld(x13, Address(fp, wordSize));
+
+#ifdef ASSERT
+    // Check that fields in JavaThread for exception oop and issuing pc are empty
+    Label oop_empty;
+    __ ld(t0, Address(xthread, Thread::pending_exception_offset()));
+    __ beqz(t0, oop_empty);
+    __ stop("exception oop must be empty");
+    __ bind(oop_empty);
+
+    Label pc_empty;
+    __ ld(t0, Address(xthread, JavaThread::exception_pc_offset()));
+    __ beqz(t0, pc_empty);
+    __ stop("exception pc must be empty");
+    __ bind(pc_empty);
 #endif
 
-  // Runtime will return true if the nmethod has been deoptimized, this is the
-  // expected scenario and anything else is an error. Note that we maintain a
-  // check on the result purely as a defensive measure.
-  Label no_deopt;
-  __ beqz(x10, no_deopt);                                // Have we deoptimized?
+    // store exception oop and throwing pc to JavaThread
+    __ sd(x10, Address(xthread, JavaThread::exception_oop_offset()));
+    __ sd(x13, Address(xthread, JavaThread::exception_pc_offset()));
 
-  // Perform a re-execute. The proper return address is already on the stack,
-  // we just need to restore registers, pop all of our frames but the return
-  // address and jump to the deopt blob.
+    restore_live_registers(sasm);
+
+    __ leave();
+
+    // Forward the exception directly to deopt blob. We can blow no
+    // registers and must leave throwing pc on the stack.  A patch may
+    // have values live in registers so the entry point with the
+    // exception in tls.
+    __ far_jump(RuntimeAddress(deopt_blob->unpack_with_exception_in_tls()));
+
+    __ bind(L);
+  }
+
+  // Runtime will return true if the nmethod has been deoptimized during
+  // the patching process. In that case we must do a deopt reexecute instead.
+  Label cont;
+
+  __ beqz(x10, cont);                                 // have we deoptimized?
+
+  // Will reexecute. Proper return address is already on the stack we just restore
+  // registers, pop all of our frame but the return address and jump to the deopt blob
 
   restore_live_registers(sasm);
   __ leave();
   __ far_jump(RuntimeAddress(deopt_blob->unpack_with_reexecution()));
 
-  __ bind(no_deopt);
-  __ stop("deopt not performed");
+  __ bind(cont);
+  restore_live_registers(sasm);
+  __ leave();
+  __ ret();
 
   return oop_maps;
 }
