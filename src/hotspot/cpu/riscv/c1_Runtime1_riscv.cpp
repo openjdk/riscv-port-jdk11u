@@ -167,19 +167,14 @@ int StubAssembler::call_RT(Register oop_result, Register metadata_result, addres
   return call_RT(oop_result, metadata_result, entry, arg_num);
 }
 
-enum return_state_t {
-  does_not_return, requires_return
-};
-
 // Implementation of StubFrame
 
 class StubFrame: public StackObj {
  private:
   StubAssembler* _sasm;
-  bool _return_state;
 
  public:
-  StubFrame(StubAssembler* sasm, const char* name, bool must_gc_arguments, return_state_t return_state=requires_return);
+  StubFrame(StubAssembler* sasm, const char* name, bool must_gc_arguments);
   void load_argument(int offset_in_words, Register reg);
 
   ~StubFrame();
@@ -197,9 +192,8 @@ void StubAssembler::epilogue() {
 
 #define __ _sasm->
 
-StubFrame::StubFrame(StubAssembler* sasm, const char* name, bool must_gc_arguments, return_state_t return_state) {
+StubFrame::StubFrame(StubAssembler* sasm, const char* name, bool must_gc_arguments) {
   _sasm = sasm;
-  _return_state = return_state;
   __ prologue(name, must_gc_arguments);
 }
 
@@ -211,11 +205,7 @@ void StubFrame::load_argument(int offset_in_words, Register reg) {
 
 
 StubFrame::~StubFrame() {
-  if (_return_state == requires_return) {
-    __ epilogue();
-  } else {
-    __ should_not_reach_here();
-  }
+  __ epilogue();
   _sasm = NULL;
 }
 
@@ -378,6 +368,7 @@ OopMapSet* Runtime1::generate_exception_throw(StubAssembler* sasm, address targe
   assert_cond(oop_maps != NULL);
   oop_maps->add_gc_map(call_offset, oop_map);
 
+  __ should_not_reach_here();
   return oop_maps;
 }
 
@@ -425,7 +416,9 @@ OopMapSet* Runtime1::generate_handle_exception(StubID id, StubAssembler *sasm) {
       sasm->set_frame_size(frame_size);
       break;
     }
-    default: ShouldNotReachHere();
+    default:
+      __ should_not_reach_here();
+      break;
   }
 
   // verify that only x10 and x13 are valid at this time
@@ -481,6 +474,9 @@ OopMapSet* Runtime1::generate_handle_exception(StubID id, StubAssembler *sasm) {
       restore_live_registers(sasm, id != handle_exception_nofpu_id);
       break;
     case handle_exception_from_callee_id:
+      // Pop the return address.
+      __ leave();
+      __ ret();  // jump to exception handler
       break;
     default: ShouldNotReachHere();
   }
@@ -641,13 +637,13 @@ OopMapSet* Runtime1::generate_code_for(StubID id, StubAssembler* sasm) {
 
     case throw_div0_exception_id:
       {
-        StubFrame f(sasm, "throw_div0_exception", dont_gc_arguments, does_not_return);
+        StubFrame f(sasm, "throw_div0_exception", dont_gc_arguments);
         oop_maps = generate_exception_throw(sasm, CAST_FROM_FN_PTR(address, throw_div0_exception), false);
       }
       break;
 
     case throw_null_pointer_exception_id:
-      { StubFrame f(sasm, "throw_null_pointer_exception", dont_gc_arguments, does_not_return);
+      { StubFrame f(sasm, "throw_null_pointer_exception", dont_gc_arguments);
         oop_maps = generate_exception_throw(sasm, CAST_FROM_FN_PTR(address, throw_null_pointer_exception), false);
       }
       break;
@@ -926,14 +922,14 @@ OopMapSet* Runtime1::generate_code_for(StubID id, StubAssembler* sasm) {
 
     case throw_class_cast_exception_id:
       {
-        StubFrame f(sasm, "throw_class_cast_exception", dont_gc_arguments, does_not_return);
+        StubFrame f(sasm, "throw_class_cast_exception", dont_gc_arguments);
         oop_maps = generate_exception_throw(sasm, CAST_FROM_FN_PTR(address, throw_class_cast_exception), true);
       }
       break;
 
     case throw_incompatible_class_change_error_id:
       {
-        StubFrame f(sasm, "throw_incompatible_class_cast_exception", dont_gc_arguments, does_not_return);
+        StubFrame f(sasm, "throw_incompatible_class_cast_exception", dont_gc_arguments);
         oop_maps = generate_exception_throw(sasm,
                                             CAST_FROM_FN_PTR(address, throw_incompatible_class_change_error), false);
       }
@@ -1027,7 +1023,7 @@ OopMapSet* Runtime1::generate_code_for(StubID id, StubAssembler* sasm) {
 
     case deoptimize_id:
       {
-        StubFrame f(sasm, "deoptimize", dont_gc_arguments, does_not_return);
+        StubFrame f(sasm, "deoptimize", dont_gc_arguments);
         OopMap* oop_map = save_live_registers(sasm);
         assert_cond(oop_map != NULL);
         f.load_argument(0, c_rarg1);
@@ -1046,7 +1042,7 @@ OopMapSet* Runtime1::generate_code_for(StubID id, StubAssembler* sasm) {
 
     case throw_range_check_failed_id:
       {
-        StubFrame f(sasm, "range_check_failed", dont_gc_arguments, does_not_return);
+        StubFrame f(sasm, "range_check_failed", dont_gc_arguments);
         oop_maps = generate_exception_throw(sasm, CAST_FROM_FN_PTR(address, throw_range_check_exception), true);
       }
       break;
@@ -1062,7 +1058,7 @@ OopMapSet* Runtime1::generate_code_for(StubID id, StubAssembler* sasm) {
 
     case access_field_patching_id:
       {
-        StubFrame f(sasm, "access_field_patching", dont_gc_arguments, does_not_return);
+        StubFrame f(sasm, "access_field_patching", dont_gc_arguments);
         // we should set up register map
         oop_maps = generate_patching(sasm, CAST_FROM_FN_PTR(address, access_field_patching));
       }
@@ -1070,7 +1066,7 @@ OopMapSet* Runtime1::generate_code_for(StubID id, StubAssembler* sasm) {
 
     case load_klass_patching_id:
       {
-        StubFrame f(sasm, "load_klass_patching", dont_gc_arguments, does_not_return);
+        StubFrame f(sasm, "load_klass_patching", dont_gc_arguments);
         // we should set up register map
         oop_maps = generate_patching(sasm, CAST_FROM_FN_PTR(address, move_klass_patching));
       }
@@ -1078,7 +1074,7 @@ OopMapSet* Runtime1::generate_code_for(StubID id, StubAssembler* sasm) {
 
     case load_mirror_patching_id:
       {
-        StubFrame f(sasm, "load_mirror_patching", dont_gc_arguments, does_not_return);
+        StubFrame f(sasm, "load_mirror_patching", dont_gc_arguments);
         // we should set up register map
         oop_maps = generate_patching(sasm, CAST_FROM_FN_PTR(address, move_mirror_patching));
       }
@@ -1086,7 +1082,7 @@ OopMapSet* Runtime1::generate_code_for(StubID id, StubAssembler* sasm) {
 
     case load_appendix_patching_id:
       {
-        StubFrame f(sasm, "load_appendix_patching", dont_gc_arguments, does_not_return);
+        StubFrame f(sasm, "load_appendix_patching", dont_gc_arguments);
         // we should set up register map
         oop_maps = generate_patching(sasm, CAST_FROM_FN_PTR(address, move_appendix_patching));
       }
@@ -1109,14 +1105,14 @@ OopMapSet* Runtime1::generate_code_for(StubID id, StubAssembler* sasm) {
 
     case throw_index_exception_id:
       {
-        StubFrame f(sasm, "index_range_check_failed", dont_gc_arguments, does_not_return);
+        StubFrame f(sasm, "index_range_check_failed", dont_gc_arguments);
         oop_maps = generate_exception_throw(sasm, CAST_FROM_FN_PTR(address, throw_index_exception), true);
       }
       break;
 
     case throw_array_store_exception_id:
       {
-        StubFrame f(sasm, "throw_array_store_exception", dont_gc_arguments, does_not_return);
+        StubFrame f(sasm, "throw_array_store_exception", dont_gc_arguments);
         // tos + 0: link
         //     + 1: return address
         oop_maps = generate_exception_throw(sasm, CAST_FROM_FN_PTR(address, throw_array_store_exception), true);
@@ -1125,7 +1121,7 @@ OopMapSet* Runtime1::generate_code_for(StubID id, StubAssembler* sasm) {
 
     case predicate_failed_trap_id:
       {
-        StubFrame f(sasm, "predicate_failed_trap", dont_gc_arguments, does_not_return);
+        StubFrame f(sasm, "predicate_failed_trap", dont_gc_arguments);
 
         OopMap* map = save_live_registers(sasm);
         assert_cond(map != NULL);
@@ -1156,7 +1152,7 @@ OopMapSet* Runtime1::generate_code_for(StubID id, StubAssembler* sasm) {
 
     default:
       {
-        StubFrame f(sasm, "unimplemented entry", dont_gc_arguments, does_not_return);
+        StubFrame f(sasm, "unimplemented entry", dont_gc_arguments);
         __ li(x10, (int) id);
         __ call_RT(noreg, noreg, CAST_FROM_FN_PTR(address, unimplemented_entry), x10);
         __ should_not_reach_here();
