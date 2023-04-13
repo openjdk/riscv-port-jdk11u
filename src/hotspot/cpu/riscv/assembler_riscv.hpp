@@ -268,14 +268,6 @@ public:
 
   enum { instruction_size = 4 };
 
-  //---<  calculate length of instruction  >---
-  // We just use the values set above.
-  // instruction must start at passed address
-  static unsigned int instr_len(unsigned char *instr) { return instruction_size; }
-
-  //---<  longest instructions  >---
-  static unsigned int instr_maxlen() { return instruction_size; }
-
   enum RoundingMode {
     rne = 0b000,     // round to Nearest, ties to Even
     rtz = 0b001,     // round towards Zero
