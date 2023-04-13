@@ -99,10 +99,15 @@ void CompiledDirectStaticCall::set_to_interpreted(const methodHandle& callee, ad
   // Creation also verifies the object.
   NativeMovConstReg* method_holder
     = nativeMovConstReg_at(stub + NativeFenceI::instruction_size());
-#ifdef ASSERT
+#ifndef PRODUCT
   NativeGeneralJump* jump = nativeGeneralJump_at(method_holder->next_instruction_address());
 
-  verify_mt_safe(callee, entry, method_holder, jump);
+  // read the value once
+  volatile intptr_t data = method_holder->data();
+  assert(data == 0 || data == (intptr_t)callee(),
+         "a) MT-unsafe modification of inline cache");
+  assert(data == 0 || jump->jump_destination() == entry,
+         "b) MT-unsafe modification of inline cache");
 #endif
   // Update stub.
   method_holder->set_data((intptr_t)callee());
