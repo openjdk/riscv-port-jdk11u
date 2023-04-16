@@ -2150,9 +2150,17 @@ encode %{
     // Load markWord from object into displaced_header.
     __ ld(disp_hdr, Address(oop, oopDesc::mark_offset_in_bytes()));
 
+    // Always do locking in runtime.
+    if (EmitSync & 0x01) {
+      __ mv(flag, 1);
+      return;
+    }
+
     // Check for existing monitor
-    __ andi(t0, disp_hdr, markOopDesc::monitor_value);
-    __ bnez(t0, object_has_monitor);
+    if ((EmitSync & 0x02) == 0) {
+      __ andi(t0, disp_hdr, markOopDesc::monitor_value);
+      __ bnez(t0, object_has_monitor);
+    }
 
     // Set tmp to be (markWord of object | UNLOCK_VALUE).
     __ ori(tmp, disp_hdr, markOopDesc::unlocked_value);
@@ -2185,24 +2193,26 @@ encode %{
     __ sd(tmp/*==0, perhaps*/, Address(box, BasicLock::displaced_header_offset_in_bytes()));
     __ mv(flag, tmp); // we can use the value of tmp as the result here
 
-    __ j(cont);
+    if ((EmitSync & 0x02) == 0) {
+      __ j(cont);
 
-    // Handle existing monitor.
-    __ bind(object_has_monitor);
-    // The object's monitor m is unlocked iff m->owner == NULL,
-    // otherwise m->owner may contain a thread or a stack address.
-    //
-    // Try to CAS m->owner from NULL to current thread.
-    __ add(tmp, disp_hdr, (ObjectMonitor::owner_offset_in_bytes() - markOopDesc::monitor_value));
-    __ cmpxchg(/*memory address*/tmp, /*expected value*/zr, /*new value*/xthread, Assembler::int64, Assembler::aq,
-             Assembler::rl, /*result*/flag); // cas succeeds if flag == zr(expected)
+      // Handle existing monitor.
+      __ bind(object_has_monitor);
+      // The object's monitor m is unlocked iff m->owner == NULL,
+      // otherwise m->owner may contain a thread or a stack address.
+      //
+      // Try to CAS m->owner from NULL to current thread.
+      __ add(tmp, disp_hdr, (ObjectMonitor::owner_offset_in_bytes() - markOopDesc::monitor_value));
+      __ cmpxchg(/*memory address*/tmp, /*expected value*/zr, /*new value*/xthread, Assembler::int64, Assembler::aq,
+                 Assembler::rl, /*result*/flag); // cas succeeds if flag == zr(expected)
 
-    // Store a non-null value into the box to avoid looking like a re-entrant
-    // lock. The fast-path monitor unlock code checks for
-    // markOopDesc::monitor_value so use markOopDesc::unused_mark which has the
-    // relevant bit set, and also matches ObjectSynchronizer::slow_enter.
-    __ mv(tmp, (address)markOopDesc::unused_mark());
-    __ sd(tmp, Address(box, BasicLock::displaced_header_offset_in_bytes()));
+      // Store a non-null value into the box to avoid looking like a re-entrant
+      // lock. The fast-path monitor unlock code checks for
+      // markOopDesc::monitor_value so use markOopDesc::unused_mark which has the
+      // relevant bit set, and also matches ObjectSynchronizer::slow_enter.
+      __ mv(tmp, (address)markOopDesc::unused_mark());
+      __ sd(tmp, Address(box, BasicLock::displaced_header_offset_in_bytes()));
+    }
 
     __ bind(cont);
   %}
@@ -2220,6 +2230,12 @@ encode %{
 
     assert_different_registers(oop, box, tmp, disp_hdr, flag);
 
+    // Always do locking in runtime.
+    if (EmitSync & 0x01) {
+      __ mv(flag, 1);
+      return;
+    }
+
     // Find the lock address and load the displaced header from the stack.
     __ ld(disp_hdr, Address(box, BasicLock::displaced_header_offset_in_bytes()));
 
@@ -2228,9 +2244,11 @@ encode %{
     __ beqz(disp_hdr, cont);
 
     // Handle existing monitor.
-    __ ld(tmp, Address(oop, oopDesc::mark_offset_in_bytes()));
-    __ andi(t0, disp_hdr, markOopDesc::monitor_value);
-    __ bnez(t0, object_has_monitor);
+    if ((EmitSync & 0x02) == 0) {
+      __ ld(tmp, Address(oop, oopDesc::mark_offset_in_bytes()));
+      __ andi(t0, disp_hdr, markOopDesc::monitor_value);
+      __ bnez(t0, object_has_monitor);
+    }
 
     // Check if it is still a light weight lock, this is true if we
     // see the stack address of the basicLock in the markWord of the
@@ -2244,23 +2262,25 @@ encode %{
     assert(oopDesc::mark_offset_in_bytes() == 0, "offset of _mark is not 0");
 
     // Handle existing monitor.
-    __ bind(object_has_monitor);
-    STATIC_ASSERT(markOopDesc::monitor_value <= INT_MAX);
-    __ add(tmp, tmp, -(int)markOopDesc::monitor_value); // monitor
-    __ ld(flag, Address(tmp, ObjectMonitor::owner_offset_in_bytes()));
-    __ ld(disp_hdr, Address(tmp, ObjectMonitor::recursions_offset_in_bytes()));
-    __ xorr(flag, flag, xthread); // Will be 0 if we are the owner.
-    __ orr(flag, flag, disp_hdr); // Will be 0 if there are 0 recursions
-    __ bnez(flag, cont);
+    if ((EmitSync & 0x02) == 0) {
+      __ bind(object_has_monitor);
+      STATIC_ASSERT(markOopDesc::monitor_value <= INT_MAX);
+      __ add(tmp, tmp, -(int)markOopDesc::monitor_value); // monitor
+      __ ld(flag, Address(tmp, ObjectMonitor::owner_offset_in_bytes()));
+      __ ld(disp_hdr, Address(tmp, ObjectMonitor::recursions_offset_in_bytes()));
+      __ xorr(flag, flag, xthread); // Will be 0 if we are the owner.
+      __ orr(flag, flag, disp_hdr); // Will be 0 if there are 0 recursions
+      __ bnez(flag, cont);
 
-    __ ld(flag, Address(tmp, ObjectMonitor::EntryList_offset_in_bytes()));
-    __ ld(disp_hdr, Address(tmp, ObjectMonitor::cxq_offset_in_bytes()));
-    __ orr(flag, flag, disp_hdr); // Will be 0 if both are 0.
-    __ bnez(flag, cont);
-    // need a release store here
-    __ la(tmp, Address(tmp, ObjectMonitor::owner_offset_in_bytes()));
-    __ membar(MacroAssembler::LoadStore | MacroAssembler::StoreStore);
-    __ sd(zr, Address(tmp)); // set unowned
+      __ ld(flag, Address(tmp, ObjectMonitor::EntryList_offset_in_bytes()));
+      __ ld(disp_hdr, Address(tmp, ObjectMonitor::cxq_offset_in_bytes()));
+      __ orr(flag, flag, disp_hdr); // Will be 0 if both are 0.
+      __ bnez(flag, cont);
+      // need a release store here
+      __ la(tmp, Address(tmp, ObjectMonitor::owner_offset_in_bytes()));
+      __ membar(MacroAssembler::LoadStore | MacroAssembler::StoreStore);
+      __ sd(zr, Address(tmp)); // set unowned
+    }
 
     __ bind(cont);
   %}
