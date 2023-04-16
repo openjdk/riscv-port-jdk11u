@@ -3563,9 +3563,13 @@ void TemplateTable::_new() {
       __ bnez(x13, loop);
     }
 
-    // initialize object hader only.
+    // initialize object header only.
     __ bind(initialize_header);
-    __ mv(t0, (intptr_t)markOopDesc::prototype());
+    if (UseBiasedLocking) {
+      __ ld(t0, Address(x14, Klass::prototype_header_offset()));
+    } else {
+      __ mv(t0, (intptr_t)markOopDesc::prototype());
+    }
     __ sd(t0, Address(x10, oopDesc::mark_offset_in_bytes()));
     __ store_klass_gap(x10, zr);   // zero klass gap for compressed oops
     __ store_klass(x10, x14);      // store klass last
