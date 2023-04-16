@@ -3043,4 +3043,6 @@ public:
   virtual ~Assembler() {}
 };
 
+class BiasedLockingCounters;
+
 #endif // CPU_RISCV_ASSEMBLER_RISCV_HPP

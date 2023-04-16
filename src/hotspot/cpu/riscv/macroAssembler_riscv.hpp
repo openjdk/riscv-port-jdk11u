@@ -47,6 +47,32 @@ class MacroAssembler: public Assembler {
   void safepoint_poll(Label& slow_path);
   void safepoint_poll_acquire(Label& slow_path);
 
+  // Biased locking support
+  // lock_reg and obj_reg must be loaded up with the appropriate values.
+  // swap_reg is killed.
+  // tmp_reg must be supplied and must not be rscratch1 or rscratch2
+  // Optional slow case is for implementations (interpreter and C1) which branch to
+  // slow case directly. Leaves condition codes set for C2's Fast_Lock node.
+  // Returns offset of first potentially-faulting instruction for null
+  // check info (currently consumed only by C1). If
+  // swap_reg_contains_mark is true then returns -1 as it is assumed
+  // the calling code has already passed any potential faults.
+  int biased_locking_enter(Register lock_reg, Register obj_reg,
+                           Register swap_reg, Register tmp_reg,
+                           bool swap_reg_contains_mark,
+                           Label& done, Label* slow_case = NULL,
+                           BiasedLockingCounters* counters = NULL,
+                           Register flag = noreg);
+  void biased_locking_exit (Register obj_reg, Register temp_reg, Label& done, Register flag = noreg);
+
+  // Helper functions for statistics gathering.
+  // Unconditional atomic increment.
+  void atomic_incw(Register counter_addr, Register tmp);
+  void atomic_incw(Address counter_addr, Register tmp1, Register tmp2) {
+    la(tmp1, counter_addr);
+    atomic_incw(tmp1, tmp2);
+  }
+
   // Place a fence.i after code may have been modified due to a safepoint.
   void safepoint_ifence();
 
@@ -224,6 +250,8 @@ class MacroAssembler: public Assembler {
   // Used for storing NULL. All other oop constants should be
   // stored using routines that take a jobject.
   void store_heap_oop_null(Address dst);
+
+  void load_prototype_header(Register dst, Register src);
 
   // This dummy is to prevent a call to store_heap_oop from
   // converting a zero (linke NULL) into a Register by giving

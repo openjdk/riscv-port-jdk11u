@@ -2156,6 +2156,10 @@ encode %{
       return;
     }
 
+    if (UseBiasedLocking && !UseOptoBiasInlining) {
+      __ biased_locking_enter(box, oop, disp_hdr, tmp, true, cont, /*slow_case*/NULL, NULL, flag);
+    }
+
     // Check for existing monitor
     if ((EmitSync & 0x02) == 0) {
       __ andi(t0, disp_hdr, markOopDesc::monitor_value);
@@ -2234,6 +2238,10 @@ encode %{
     if (EmitSync & 0x01) {
       __ mv(flag, 1);
       return;
+    }
+
+    if (UseBiasedLocking && !UseOptoBiasInlining) {
+      __ biased_locking_exit(oop, tmp, cont, flag);
     }
 
     // Find the lock address and load the displaced header from the stack.
@@ -4961,6 +4969,10 @@ instruct storePConditional(memory heap_top_ptr, iRegP oldval, iRegP newval, rFla
   ins_pipe(pipe_serial);
 %}
 
+// storeLConditional is used by PhaseMacroExpand::expand_lock_node
+// when attempting to rebias a lock towards the current thread.  We
+// must use the acquire form of cmpxchg in order to guarantee acquire
+// semantics in this case.
 instruct storeLConditional(indirect mem, iRegLNoSp oldval, iRegLNoSp newval, rFlagsReg cr)
 %{
   match(Set cr (StoreLConditional mem (Binary oldval newval)));
