@@ -3192,6 +3192,7 @@ void TemplateTable::prepare_invoke(int byte_no,
     // since the parameter_size includes it.
     __ push_reg(x9);
     __ mv(x9, index);
+    assert(ConstantPoolCacheEntry::_indy_resolved_references_appendix_offset == 0, "appendix expected at index+0");
     __ load_resolved_reference_at_index(index, x9);
     __ pop_reg(x9);
     __ push_reg(index);  // push appendix (MethodType, CallSite, etc.)
