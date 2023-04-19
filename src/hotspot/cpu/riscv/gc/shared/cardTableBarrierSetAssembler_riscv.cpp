@@ -41,6 +41,9 @@ void CardTableBarrierSetAssembler::store_check(MacroAssembler* masm, Register ob
   BarrierSet* bs = BarrierSet::barrier_set();
   assert(bs->kind() == BarrierSet::CardTableBarrierSet, "Wrong barrier set kind");
 
+  CardTableBarrierSet* ctbs = barrier_set_cast<CardTableBarrierSet>(bs);
+  CardTable* ct = ctbs->card_table();
+
   __ srli(obj, obj, CardTable::card_shift);
 
   assert(CardTable::dirty_card_val() == 0, "must be");
@@ -56,6 +59,9 @@ void CardTableBarrierSetAssembler::store_check(MacroAssembler* masm, Register ob
     __ sb(zr, Address(tmp));
     __ bind(L_already_dirty);
   } else {
+    if (ct->scanned_concurrently()) {
+      __ membar(MacroAssembler::StoreStore);
+    }
     __ sb(zr, Address(tmp));
   }
 }
@@ -65,6 +71,10 @@ void CardTableBarrierSetAssembler::gen_write_ref_array_post_barrier(MacroAssembl
   assert_cond(masm != NULL);
   assert_different_registers(start, tmp);
   assert_different_registers(count, tmp);
+
+  BarrierSet* bs = BarrierSet::barrier_set();
+  CardTableBarrierSet* ctbs = barrier_set_cast<CardTableBarrierSet>(bs);
+  CardTable* ct = ctbs->card_table();
 
   Label L_loop, L_done;
   const Register end = count;
@@ -80,6 +90,9 @@ void CardTableBarrierSetAssembler::gen_write_ref_array_post_barrier(MacroAssembl
 
   __ load_byte_map_base(tmp);
   __ add(start, start, tmp);
+  if (ct->scanned_concurrently()) {
+    __ membar(MacroAssembler::StoreStore);
+  }
 
   __ bind(L_loop);
   __ add(tmp, start, count);
