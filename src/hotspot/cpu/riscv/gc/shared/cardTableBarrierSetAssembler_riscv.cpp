@@ -43,6 +43,7 @@ void CardTableBarrierSetAssembler::store_check(MacroAssembler* masm, Register ob
 
   CardTableBarrierSet* ctbs = barrier_set_cast<CardTableBarrierSet>(bs);
   CardTable* ct = ctbs->card_table();
+  assert(sizeof(*ct->byte_map_base()) == sizeof(jbyte), "adjust this code");
 
   __ srli(obj, obj, CardTable::card_shift);
 
