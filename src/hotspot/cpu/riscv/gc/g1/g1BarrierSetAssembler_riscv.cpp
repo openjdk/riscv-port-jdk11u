@@ -196,6 +196,7 @@ void G1BarrierSetAssembler::g1_write_barrier_post(MacroAssembler* masm,
   BarrierSet* bs = BarrierSet::barrier_set();
   CardTableBarrierSet* ctbs = barrier_set_cast<CardTableBarrierSet>(bs);
   CardTable* ct = ctbs->card_table();
+  assert(sizeof(*ct->byte_map_base()) == sizeof(jbyte), "adjust this code");
 
   Label done;
   Label runtime;
@@ -213,6 +214,7 @@ void G1BarrierSetAssembler::g1_write_barrier_post(MacroAssembler* masm,
   // storing region crossing non-NULL, is card already dirty?
 
   ExternalAddress cardtable((address) ct->byte_map_base());
+  assert(sizeof(*ct->byte_map_base()) == sizeof(jbyte), "adjust this code");
   const Register card_addr = tmp;
 
   __ srli(card_addr, store_addr, CardTable::card_shift);
@@ -419,6 +421,7 @@ void G1BarrierSetAssembler::generate_c1_post_barrier_runtime_stub(StubAssembler*
   BarrierSet* bs = BarrierSet::barrier_set();
   CardTableBarrierSet* ctbs = barrier_set_cast<CardTableBarrierSet>(bs);
   CardTable* ct = ctbs->card_table();
+  assert(sizeof(*ct->byte_map_base()) == sizeof(jbyte), "adjust this code");
 
   Label done;
   Label runtime;
