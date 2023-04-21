@@ -4846,6 +4846,8 @@ instruct storeN(iRegN src, memory mem)
 instruct storeImmN0(iRegIHeapbase heapbase, immN0 zero, memory mem)
 %{
   match(Set mem (StoreN mem zero));
+  predicate(Universe::narrow_oop_base() == NULL &&
+            Universe::narrow_klass_base() == NULL);
 
   ins_cost(STORE_COST);
   format %{ "sw  rheapbase, $mem\t# compressed ptr (rheapbase==0), #@storeImmN0" %}
