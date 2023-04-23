@@ -571,7 +571,16 @@ bool frame::is_interpreted_frame_valid(JavaThread* thread) const {
 
   // validate locals
   address locals = (address) *interpreter_frame_locals_addr();
-  if (locals > thread->stack_base() || locals < (address) fp()) {
+  if (locals > thread->stack_base()) {
+    return false;
+  }
+
+  if (m->max_locals() > 0 && locals < (address) fp()) {
+    // fp in interpreter frame on RISC-V is higher than that on AArch64,
+    // pointing to sender_sp and sender_sp-2 relatively.
+    // On RISC-V, if max_locals is 0, the 'locals' pointer may be below fp,
+    // pointing to sender_sp-1 (with one padding slot).
+    // So we verify the 'locals' pointer only if max_locals > 0.
     return false;
   }
 
