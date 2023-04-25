@@ -47,7 +47,6 @@
 #include "runtime/sharedRuntime.hpp"
 #include "runtime/stubRoutines.hpp"
 #include "runtime/thread.hpp"
-#include "utilities/powerOfTwo.hpp"
 #ifdef COMPILER2
 #include "opto/compile.hpp"
 #include "opto/node.hpp"

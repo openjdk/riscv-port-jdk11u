@@ -44,7 +44,6 @@
 #include "runtime/safepointMechanism.hpp"
 #include "runtime/sharedRuntime.hpp"
 #include "runtime/thread.inline.hpp"
-#include "utilities/powerOfTwo.hpp"
 
 void InterpreterMacroAssembler::narrow(Register result) {
   // Get method->_constMethod->_result_type

@@ -38,7 +38,6 @@
 #include "ci/ciTypeArrayKlass.hpp"
 #include "runtime/sharedRuntime.hpp"
 #include "runtime/stubRoutines.hpp"
-#include "utilities/powerOfTwo.hpp"
 #include "vmreg_riscv.inline.hpp"
 
 #ifdef ASSERT
@@ -383,7 +382,7 @@ void LIRGenerator::do_ArithmeticOp_Long(ArithmeticOp* x) {
       // no need to do div-by-zero check if the divisor is a non-zero constant
       if (c != 0) { need_zero_check = false; }
       // do not load right if the divisor is a power-of-2 constant
-      if (c > 0 && is_power_of_2(c)) {
+      if (c > 0 && is_power_of_2_long(c)) {
         right.dont_load_item();
       } else {
         right.load_item();
