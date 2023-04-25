@@ -233,7 +233,8 @@ static int reg2offset_out(VMReg r) {
 
 int SharedRuntime::java_calling_convention(const BasicType *sig_bt,
                                            VMRegPair *regs,
-                                           int total_args_passed) {
+                                           int total_args_passed,
+                                           int is_outgoing) {
   // Create the mapping between argument positions and
   // registers.
   static const Register INT_ArgReg[Argument::n_int_register_parameters_j] = {
@@ -2153,14 +2154,6 @@ void SharedRuntime::generate_deopt_blob() {
   _deopt_blob = DeoptimizationBlob::create(&buffer, oop_maps, 0, exception_offset, reexecute_offset, frame_size_in_words);
   assert(_deopt_blob != NULL, "create deoptimization blob fail!");
   _deopt_blob->set_unpack_with_exception_in_tls_offset(exception_in_tls_offset);
-}
-
-// Number of stack slots between incoming argument block and the start of
-// a new frame. The PROLOG must add this many slots to the stack. The
-// EPILOG must remove this many slots.
-// RISCV needs two words for RA (return address) and FP (frame pointer).
-uint SharedRuntime::in_preserve_stack_slots() {
-  return 2 * VMRegImpl::slots_per_word;
 }
 
 uint SharedRuntime::out_preserve_stack_slots() {
