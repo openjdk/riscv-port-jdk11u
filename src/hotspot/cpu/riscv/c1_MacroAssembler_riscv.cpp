@@ -33,7 +33,6 @@
 #include "gc/shared/collectedHeap.hpp"
 #include "interpreter/interpreter.hpp"
 #include "oops/arrayOop.hpp"
-#include "oops/markWord.hpp"
 #include "runtime/basicLock.hpp"
 #include "runtime/biasedLocking.hpp"
 #include "runtime/os.hpp"
