@@ -27,7 +27,6 @@
 #define CPU_RISCV_JNITYPES_RISCV_HPP
 
 #include "jni.h"
-#include "memory/allStatic.hpp"
 #include "oops/oop.hpp"
 
 // This file holds platform-dependent routines used to write primitive jni

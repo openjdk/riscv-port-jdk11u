@@ -27,8 +27,6 @@
 #ifndef CPU_RISCV_BYTES_RISCV_HPP
 #define CPU_RISCV_BYTES_RISCV_HPP
 
-#include "memory/allStatic.hpp"
-
 class Bytes: AllStatic {
  public:
   // Efficient reading and writing of unaligned unsigned data in platform-specific byte ordering
