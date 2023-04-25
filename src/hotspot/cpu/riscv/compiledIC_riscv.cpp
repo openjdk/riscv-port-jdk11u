@@ -86,7 +86,7 @@ int CompiledStaticCall::reloc_to_interp_stub() {
 }
 
 void CompiledDirectStaticCall::set_to_interpreted(const methodHandle& callee, address entry) {
-  address stub = find_stub();
+  address stub = find_stub(false /* is_aot */);
   guarantee(stub != NULL, "stub not found");
 
   if (TraceICs) {
@@ -138,7 +138,7 @@ void CompiledDirectStaticCall::verify() {
   _call->verify_alignment();
 
   // Verify stub.
-  address stub = find_stub();
+  address stub = find_stub(false /* is_aot */);
   assert(stub != NULL, "no stub found for static call");
   // Creation also verifies the object.
   NativeMovConstReg* method_holder
