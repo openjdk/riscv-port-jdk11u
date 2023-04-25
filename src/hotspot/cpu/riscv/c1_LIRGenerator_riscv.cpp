@@ -360,7 +360,12 @@ void LIRGenerator::do_ArithmeticOp_FPU(ArithmeticOp* x) {
   right.load_item();
 
   LIR_Opr reg = rlock(x);
-  arithmetic_op_fpu(x->op(), reg, left.result(), right.result());
+  LIR_Opr tmp = LIR_OprFact::illegalOpr;
+  if (x->is_strictfp() && (x->op() == Bytecodes::_dmul || x->op() == Bytecodes::_ddiv)) {
+    tmp = new_register(T_DOUBLE);
+  }
+
+  arithmetic_op_fpu(x->op(), reg, left.result(), right.result(), x->is_strictfp());
 
   set_result(x, round_item(reg));
 }
