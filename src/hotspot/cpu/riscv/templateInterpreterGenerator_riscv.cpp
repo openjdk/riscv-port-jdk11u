@@ -556,31 +556,81 @@ address TemplateInterpreterGenerator::generate_safept_entry_for(TosState state,
 //
 // xmethod: method
 //
-void TemplateInterpreterGenerator::generate_counter_incr(Label* overflow) {
+void TemplateInterpreterGenerator::generate_counter_incr(
+        Label* overflow,
+        Label* profile_method,
+        Label* profile_method_continue) {
   Label done;
   // Note: In tiered we increment either counters in Method* or in MDO depending if we're profiling or not.
-  int increment = InvocationCounter::count_increment;
-  Label no_mdo;
-  if (ProfileInterpreter) {
-    // Are we profiling?
-    __ ld(x10, Address(xmethod, Method::method_data_offset()));
-    __ beqz(x10, no_mdo);
-    // Increment counter in the MDO
-    const Address mdo_invocation_counter(x10, in_bytes(MethodData::invocation_counter_offset()) +
-                                         in_bytes(InvocationCounter::counter_offset()));
-    const Address mask(x10, in_bytes(MethodData::invoke_mask_offset()));
-    __ increment_mask_and_jump(mdo_invocation_counter, increment, mask, t0, t1, false, overflow);
-    __ j(done);
+  if (TieredCompilation) {
+    int increment = InvocationCounter::count_increment;
+    Label no_mdo;
+    if (ProfileInterpreter) {
+      // Are we profiling?
+      __ ld(x10, Address(xmethod, Method::method_data_offset()));
+      __ beqz(x10, no_mdo);
+      // Increment counter in the MDO
+      const Address mdo_invocation_counter(x10, in_bytes(MethodData::invocation_counter_offset()) +
+                                                in_bytes(InvocationCounter::counter_offset()));
+      const Address mask(x10, in_bytes(MethodData::invoke_mask_offset()));
+      __ increment_mask_and_jump(mdo_invocation_counter, increment, mask, t0, t1, false, overflow);
+      __ j(done);
+    }
+    __ bind(no_mdo);
+    // Increment counter in MethodCounters
+    const Address invocation_counter(t1,
+                  MethodCounters::invocation_counter_offset() +
+                  InvocationCounter::counter_offset());
+    __ get_method_counters(xmethod, t1, done);
+    const Address mask(t1, in_bytes(MethodCounters::invoke_mask_offset()));
+    __ increment_mask_and_jump(invocation_counter, increment, mask, t0, x11, false, overflow);
+    __ bind(done);
+  } else { // not TieredCompilation
+    const Address backedge_counter(t1,
+                  MethodCounters::backedge_counter_offset() +
+                  InvocationCounter::counter_offset());
+    const Address invocation_counter(t1,
+                  MethodCounters::invocation_counter_offset() +
+                  InvocationCounter::counter_offset());
+
+    __ get_method_counters(xmethod, t1, done);
+
+    if (ProfileInterpreter) { // %%% Merge this into MethodData*
+      __ lwu(x11, Address(t1, MethodCounters::interpreter_invocation_counter_offset()));
+      __ addw(x11, x11, 1);
+      __ sw(x11, Address(t1, MethodCounters::interpreter_invocation_counter_offset()));
+    }
+    // Update standard invocation counters
+    __ lwu(x11, invocation_counter);
+    __ lwu(x10, backedge_counter);
+
+    __ addw(x11, x11, InvocationCounter::count_increment);
+    __ andi(x10, x10, InvocationCounter::count_mask_value);
+
+    __ sw(x11, invocation_counter);
+    __ addw(x10, x10, x11);                // add both counters
+
+    // profile_method is non-null only for interpreted method so
+    // profile_method != NULL == !native_call
+
+    if (ProfileInterpreter && profile_method != NULL) {
+      // Test to see if we should create a method data oop
+      __ ld(t1, Address(xmethod, Method::method_counters_offset()));
+      __ lwu(t1, Address(t1, in_bytes(MethodCounters::interpreter_profile_limit_offset())));
+      __ blt(x10, t1, *profile_method_continue);
+
+      // if no method data exists, go to profile_method
+      __ test_method_data_pointer(t1, *profile_method);
+    }
+
+    {
+      __ ld(t1, Address(xmethod, Method::method_counters_offset()));
+      __ lwu(t1, Address(t1, in_bytes(MethodCounters::interpreter_invocation_limit_offset())));
+      __ bltu(x10, t1, done);
+      __ j(*overflow);
+    }
+    __ bind(done);
   }
-  __ bind(no_mdo);
-  // Increment counter in MethodCounters
-  const Address invocation_counter(t1,
-                                   MethodCounters::invocation_counter_offset() +
-                                   InvocationCounter::counter_offset());
-  __ get_method_counters(xmethod, t1, done);
-  const Address mask(t1, in_bytes(MethodCounters::invoke_mask_offset()));
-  __ increment_mask_and_jump(invocation_counter, increment, mask, t0, x11, false, overflow);
-  __ bind(done);
 }
 
 void TemplateInterpreterGenerator::generate_counter_overflow(Label& do_continue) {
@@ -977,7 +1027,7 @@ address TemplateInterpreterGenerator::generate_native_entry(bool synchronized) {
   // increment invocation count & check for overflow
   Label invocation_counter_overflow;
   if (inc_counter) {
-    generate_counter_incr(&invocation_counter_overflow);
+    generate_counter_incr(&invocation_counter_overflow, NULL, NULL);
   }
 
   Label continue_after_compile;
@@ -1389,8 +1439,15 @@ address TemplateInterpreterGenerator::generate_normal_entry(bool synchronized) {
 
   // increment invocation count & check for overflow
   Label invocation_counter_overflow;
+  Label profile_method;
+  Label profile_method_continue;
   if (inc_counter) {
-    generate_counter_incr(&invocation_counter_overflow);
+    generate_counter_incr(&invocation_counter_overflow,
+                          &profile_method,
+                          &profile_method_continue);
+    if (ProfileInterpreter) {
+      __ bind(profile_method_continue);
+    }
   }
 
   Label continue_after_compile;
@@ -1427,6 +1484,15 @@ address TemplateInterpreterGenerator::generate_normal_entry(bool synchronized) {
 
   // invocation counter overflow
   if (inc_counter) {
+    if (ProfileInterpreter) {
+      // We have decided to profile this method in the interpreter
+      __ bind(profile_method);
+      __ call_VM(noreg, CAST_FROM_FN_PTR(address, InterpreterRuntime::profile_method));
+      __ set_method_data_pointer_for_bcp();
+      // don't think we need this
+      __ get_method(x11);
+      __ j(profile_method_continue);
+    }
     // Handle overflow of counter and compile method
     __ bind(invocation_counter_overflow);
     generate_counter_overflow(continue_after_compile);
