@@ -206,6 +206,7 @@ LIR_Opr LIRGenerator::load_immediate(int x, BasicType type) {
       break;
     default:
       ShouldNotReachHere();
+      r = NULL;
   }
   return r;
 }
