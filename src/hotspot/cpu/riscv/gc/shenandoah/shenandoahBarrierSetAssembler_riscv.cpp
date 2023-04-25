@@ -216,9 +216,9 @@ void ShenandoahBarrierSetAssembler::resolve_forward_pointer_not_null(MacroAssemb
   Label done;
   __ ld(tmp, Address(dst, oopDesc::mark_offset_in_bytes()));
   __ xori(tmp, tmp, -1); // eon with 0 is equivalent to XOR with -1
-  __ andi(t2, tmp, markWord::lock_mask_in_place);
+  __ andi(t2, tmp, markOopDesc::lock_mask_in_place);
   __ bnez(t2, done);
-  __ ori(tmp, tmp, markWord::marked_value);
+  __ ori(tmp, tmp, markOopDesc::marked_value);
   __ xori(dst, tmp, -1); // eon with 0 is equivalent to XOR with -1
   __ bind(done);
 

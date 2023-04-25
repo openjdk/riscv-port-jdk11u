@@ -3559,7 +3559,7 @@ void TemplateTable::_new() {
 
     // initialize object hader only.
     __ bind(initialize_header);
-    __ mv(t0, (intptr_t)markWord::prototype().value());
+    __ mv(t0, (intptr_t)markOopDesc::prototype());
     __ sd(t0, Address(x10, oopDesc::mark_offset_in_bytes()));
     __ store_klass_gap(x10, zr);   // zero klass gap for compressed oops
     __ store_klass(x10, x14);      // store klass last
