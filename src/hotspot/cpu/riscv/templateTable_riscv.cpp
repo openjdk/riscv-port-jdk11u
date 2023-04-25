@@ -1745,6 +1745,7 @@ void TemplateTable::branch(bool is_jsr, bool is_wide)
   assert(UseLoopCounter || !UseOnStackReplacement,
          "on-stack-replacement requires loop counters");
   Label backedge_counter_overflow;
+  Label profile_method;
   Label dispatch;
   if (UseLoopCounter) {
     // increment backedge counter for backward branches
@@ -1769,31 +1770,75 @@ void TemplateTable::branch(bool is_jsr, bool is_wide)
     __ beqz(t0, dispatch); // No MethodCounters allocated, OutOfMemory
     __ bind(has_counters);
 
-    Label no_mdo;
-    int increment = InvocationCounter::count_increment;
-    if (ProfileInterpreter) {
-      // Are we profiling?
-      __ ld(x11, Address(xmethod, in_bytes(Method::method_data_offset())));
-      __ beqz(x11, no_mdo);
-      // Increment the MDO backedge counter
-      const Address mdo_backedge_counter(x11, in_bytes(MethodData::backedge_counter_offset()) +
-                                         in_bytes(InvocationCounter::counter_offset()));
-      const Address mask(x11, in_bytes(MethodData::backedge_mask_offset()));
-      __ increment_mask_and_jump(mdo_backedge_counter, increment, mask,
-                                 x10, t0, false,
+    if (TieredCompilation) {
+      Label no_mdo;
+      int increment = InvocationCounter::count_increment;
+      if (ProfileInterpreter) {
+        // Are we profiling?
+        __ ld(x11, Address(xmethod, in_bytes(Method::method_data_offset())));
+        __ beqz(x11, no_mdo);
+        // Increment the MDO backedge counter
+        const Address mdo_backedge_counter(x11, in_bytes(MethodData::backedge_counter_offset()) +
+                                           in_bytes(InvocationCounter::counter_offset()));
+        const Address mask(x11, in_bytes(MethodData::backedge_mask_offset()));
+        __ increment_mask_and_jump(mdo_backedge_counter, increment, mask,
+                                   x10, t0, false,
+                                   UseOnStackReplacement ? &backedge_counter_overflow : &dispatch);
+        __ j(dispatch);
+      }
+      __ bind(no_mdo);
+      // Increment backedge counter in MethodCounters*
+      __ ld(t0, Address(xmethod, Method::method_counters_offset()));
+      const Address mask(t0, in_bytes(MethodCounters::backedge_mask_offset()));
+      __ increment_mask_and_jump(Address(t0, be_offset), increment, mask,
+                                 x10, t1, false,
                                  UseOnStackReplacement ? &backedge_counter_overflow : &dispatch);
-      __ j(dispatch);
+    } else { // not TieredCompilation
+      // increment counter
+      __ ld(t1, Address(xmethod, Method::method_counters_offset()));
+      __ lwu(x10, Address(t1, be_offset));     // load backedge counter
+      __ addw(t0, x10, InvocationCounter::count_increment); // increment counter
+      __ sw(t0, Address(t1, be_offset));       // store counter
+
+      __ lwu(x10, Address(t1, inv_offset));    // load invocation counter
+      __ andi(x10, x10, (unsigned)InvocationCounter::count_mask_value, x13); // and the status bits
+      __ addw(x10, x10, t0);        // add both counters
+
+      if (ProfileInterpreter) {
+        // Test to see if we should create a method data oop
+        __ lwu(t0, Address(t1, in_bytes(MethodCounters::interpreter_profile_limit_offset())));
+        __ blt(x10, t0, dispatch);
+
+        // if no method data exists, go to profile method
+        __ test_method_data_pointer(x10, profile_method);
+
+        if (UseOnStackReplacement) {
+          // check for overflow against x11 which is the MDO taken count
+          __ lwu(t0, Address(t1, in_bytes(MethodCounters::interpreter_backward_branch_limit_offset())));
+          __ bltu(x11, t0, dispatch); // Intel == Assembler::below, lo:unsigned lower
+
+          // When ProfileInterpreter is on, the backedge_count comes
+          // from the MethodData*, which value does not get reset on
+          // the call to frequency_counter_overflow().  To avoid
+          // excessive calls to the overflow routine while the method is
+          // being compiled, add a second test to make sure the overflow
+          // function is called only once every overflow_frequency.
+          const int overflow_frequency = 1024;
+          __ andi(x11, x11, overflow_frequency - 1);
+          __ beqz(x11, backedge_counter_overflow);
+
+        }
+      } else {
+        if (UseOnStackReplacement) {
+          // check for overflow against x10, which is the sum of the
+          // counters
+          __ lwu(t0, Address(t1, in_bytes(MethodCounters::interpreter_backward_branch_limit_offset())));
+          __ bgeu(x10, t0, backedge_counter_overflow); // Intel == Assembler::aboveEqual
+        }
+      }
     }
-    __ bind(no_mdo);
-    // Increment backedge counter in MethodCounters*
-    __ ld(t0, Address(xmethod, Method::method_counters_offset()));
-    const Address mask(t0, in_bytes(MethodCounters::backedge_mask_offset()));
-    __ increment_mask_and_jump(Address(t0, be_offset), increment, mask,
-                               x10, t1, false,
-                               UseOnStackReplacement ? &backedge_counter_overflow : &dispatch);
     __ bind(dispatch);
   }
-
   // Pre-load the next target bytecode into t0
   __ load_unsigned_byte(t0, Address(xbcp, 0));
 
@@ -1802,52 +1847,63 @@ void TemplateTable::branch(bool is_jsr, bool is_wide)
   // xbcp: target bcp
   __ dispatch_only(vtos, /*generate_poll*/true);
 
-  if (UseLoopCounter && UseOnStackReplacement) {
-    // invocation counter overflow
-    __ bind(backedge_counter_overflow);
-    __ neg(x12, x12);
-    __ add(x12, x12, xbcp);     // branch xbcp
-    // IcoResult frequency_counter_overflow([JavaThread*], address branch_bcp)
-    __ call_VM(noreg,
-               CAST_FROM_FN_PTR(address,
-                                InterpreterRuntime::frequency_counter_overflow),
-               x12);
-    __ load_unsigned_byte(x11, Address(xbcp, 0));  // restore target bytecode
-
-    // x10: osr nmethod (osr ok) or NULL (osr not possible)
-    // w11: target bytecode
-    // x12: temporary
-    __ beqz(x10, dispatch);     // test result -- no osr if null
-    // nmethod may have been invalidated (VM may block upon call_VM return)
-    __ lbu(x12, Address(x10, nmethod::state_offset()));
-    if (nmethod::in_use != 0) {
-      __ sub(x12, x12, nmethod::in_use);
+  if (UseLoopCounter) {
+    if (ProfileInterpreter && !TieredCompilation) {
+      // Out-of-line code to allocate method data oop.
+      __ bind(profile_method);
+      __ call_VM(noreg, CAST_FROM_FN_PTR(address, InterpreterRuntime::profile_method));
+      __ load_unsigned_byte(x11, Address(xbcp, 0));  // restore target bytecode
+      __ set_method_data_pointer_for_bcp();
+      __ j(dispatch);
     }
-    __ bnez(x12, dispatch);
 
-    // We have the address of an on stack replacement routine in x10
-    // We need to prepare to execute the OSR method. First we must
-    // migrate the locals and monitors off of the stack.
+    if (UseOnStackReplacement) {
+      // invocation counter overflow
+      __ bind(backedge_counter_overflow);
+      __ neg(x12, x12);
+      __ add(x12, x12, xbcp);     // branch xbcp
+      // IcoResult frequency_counter_overflow([JavaThread*], address branch_bcp)
+      __ call_VM(noreg,
+                 CAST_FROM_FN_PTR(address,
+                                  InterpreterRuntime::frequency_counter_overflow),
+                 x12);
+      __ load_unsigned_byte(x11, Address(xbcp, 0));  // restore target bytecode
 
-    __ mv(x9, x10);                             // save the nmethod
+      // x10: osr nmethod (osr ok) or NULL (osr not possible)
+      // w11: target bytecode
+      // x12: temporary
+      __ beqz(x10, dispatch);     // test result -- no osr if null
+      // nmethod may have been invalidated (VM may block upon call_VM return)
+      __ lbu(x12, Address(x10, nmethod::state_offset()));
+      if (nmethod::in_use != 0) {
+        __ sub(x12, x12, nmethod::in_use);
+      }
+      __ bnez(x12, dispatch);
 
-    call_VM(noreg, CAST_FROM_FN_PTR(address, SharedRuntime::OSR_migration_begin));
+      // We have the address of an on stack replacement routine in x10
+      // We need to prepare to execute the OSR method. First we must
+      // migrate the locals and monitors off of the stack.
 
-    // x10 is OSR buffer, move it to expected parameter location
-    __ mv(j_rarg0, x10);
+      __ mv(x9, x10);                             // save the nmethod
 
-    // remove activation
-    // get sender esp
-    __ ld(esp,
-        Address(fp, frame::interpreter_frame_sender_sp_offset * wordSize));
-    // remove frame anchor
-    __ leave();
-    // Ensure compiled code always sees stack at proper alignment
-    __ andi(sp, esp, -16);
+      call_VM(noreg, CAST_FROM_FN_PTR(address, SharedRuntime::OSR_migration_begin));
 
-    // and begin the OSR nmethod
-    __ ld(t0, Address(x9, nmethod::osr_entry_point_offset()));
-    __ jr(t0);
+      // x10 is OSR buffer, move it to expected parameter location
+      __ mv(j_rarg0, x10);
+
+      // remove activation
+      // get sender esp
+      __ ld(esp,
+          Address(fp, frame::interpreter_frame_sender_sp_offset * wordSize));
+      // remove frame anchor
+      __ leave();
+      // Ensure compiled code always sees stack at proper alignment
+      __ andi(sp, esp, -16);
+
+      // and begin the OSR nmethod
+      __ ld(t0, Address(x9, nmethod::osr_entry_point_offset()));
+      __ jr(t0);
+    }
   }
 }
 
