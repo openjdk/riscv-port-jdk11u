@@ -46,7 +46,6 @@
 #include "runtime/stubRoutines.hpp"
 #include "runtime/vframe.hpp"
 #include "runtime/vframeArray.hpp"
-#include "utilities/powerOfTwo.hpp"
 #include "vmreg_riscv.inline.hpp"
 
 
