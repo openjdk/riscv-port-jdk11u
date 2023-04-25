@@ -1966,12 +1966,12 @@ encode %{
     __ ld(disp_hdr, Address(oop, oopDesc::mark_offset_in_bytes()));
 
     // Check for existing monitor
-    __ andi(t0, disp_hdr, markWord::monitor_value);
+    __ andi(t0, disp_hdr, markOopDesc::monitor_value);
     __ bnez(t0, object_has_monitor);
 
     if (!UseHeavyMonitors) {
       // Set tmp to be (markWord of object | UNLOCK_VALUE).
-      __ ori(tmp, disp_hdr, markWord::unlocked_value);
+      __ ori(tmp, disp_hdr, markOopDesc::unlocked_value);
 
       // Initialize the box. (Must happen before we update the object mark!)
       __ sd(tmp, Address(box, BasicLock::displaced_header_offset_in_bytes()));
@@ -1993,7 +1993,7 @@ encode %{
       // Check if the owner is self by comparing the value in the
       // markWord of object (disp_hdr) with the stack pointer.
       __ sub(disp_hdr, disp_hdr, sp);
-      __ li(tmp, (intptr_t) (~(os::vm_page_size()-1) | (uintptr_t)markWord::lock_mask_in_place));
+      __ li(tmp, (intptr_t) (~(os::vm_page_size()-1) | (uintptr_t)markOopDesc::lock_mask_in_place));
       // If (mark & lock_mask) == 0 and mark - sp < page_size, we are stack-locking and goto cont,
       // hence we can store 0 as the displaced header in the box, which indicates that it is a
       // recursive lock.
@@ -2012,15 +2012,15 @@ encode %{
     // otherwise m->owner may contain a thread or a stack address.
     //
     // Try to CAS m->owner from NULL to current thread.
-    __ add(tmp, disp_hdr, (ObjectMonitor::owner_offset_in_bytes() - markWord::monitor_value));
+    __ add(tmp, disp_hdr, (ObjectMonitor::owner_offset_in_bytes() - markOopDesc::monitor_value));
     __ cmpxchg(/*memory address*/tmp, /*expected value*/zr, /*new value*/xthread, Assembler::int64, Assembler::aq,
              Assembler::rl, /*result*/flag); // cas succeeds if flag == zr(expected)
 
     // Store a non-null value into the box to avoid looking like a re-entrant
     // lock. The fast-path monitor unlock code checks for
-    // markWord::monitor_value so use markWord::unused_mark which has the
+    // markOopDesc::monitor_value so use markOopDesc::unused_mark which has the
     // relevant bit set, and also matches ObjectSynchronizer::slow_enter.
-    __ mv(tmp, (address)markWord::unused_mark().value());
+    __ mv(tmp, (address)markOopDesc::unused_mark());
     __ sd(tmp, Address(box, BasicLock::displaced_header_offset_in_bytes()));
 
     __ beqz(flag, cont); // CAS success means locking succeeded
@@ -2029,9 +2029,9 @@ encode %{
 
     // Recursive lock case
     __ mv(flag, zr);
-    __ ld(tmp, Address(disp_hdr, ObjectMonitor::recursions_offset_in_bytes() - markWord::monitor_value));
+    __ ld(tmp, Address(disp_hdr, ObjectMonitor::recursions_offset_in_bytes() - markOopDesc::monitor_value));
     __ add(tmp, tmp, 1u);
-    __ sd(tmp, Address(disp_hdr, ObjectMonitor::recursions_offset_in_bytes() - markWord::monitor_value));
+    __ sd(tmp, Address(disp_hdr, ObjectMonitor::recursions_offset_in_bytes() - markOopDesc::monitor_value));
 
     __ bind(cont);
   %}
@@ -2060,7 +2060,7 @@ encode %{
 
     // Handle existing monitor.
     __ ld(tmp, Address(oop, oopDesc::mark_offset_in_bytes()));
-    __ andi(t0, disp_hdr, markWord::monitor_value);
+    __ andi(t0, disp_hdr, markOopDesc::monitor_value);
     __ bnez(t0, object_has_monitor);
 
     if (!UseHeavyMonitors) {
@@ -2080,8 +2080,8 @@ encode %{
 
     // Handle existing monitor.
     __ bind(object_has_monitor);
-    STATIC_ASSERT(markWord::monitor_value <= INT_MAX);
-    __ add(tmp, tmp, -(int)markWord::monitor_value); // monitor
+    STATIC_ASSERT(markOopDesc::monitor_value <= INT_MAX);
+    __ add(tmp, tmp, -(int)markOopDesc::monitor_value); // monitor
     __ ld(disp_hdr, Address(tmp, ObjectMonitor::recursions_offset_in_bytes()));
 
     Label notRecursive;
