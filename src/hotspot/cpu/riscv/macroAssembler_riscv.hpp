@@ -671,9 +671,6 @@ class MacroAssembler: public Assembler {
 
   void cmpptr(Register src1, Address src2, Label& equal);
 
-  void clinit_barrier(Register klass, Register tmp, Label* L_fast_path = NULL, Label* L_slow_path = NULL);
-  void load_method_holder(Register holder, Register method);
-
   void compute_index(Register str1, Register trailing_zeros, Register match_mask,
                      Register result, Register char_tmp, Register tmp,
                      bool haystack_isL);

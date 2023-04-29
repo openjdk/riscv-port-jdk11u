@@ -372,36 +372,6 @@ void MacroAssembler::get_vm_result_2(Register metadata_result, Register java_thr
   sd(zr, Address(java_thread, JavaThread::vm_result_2_offset()));
 }
 
-void MacroAssembler::clinit_barrier(Register klass, Register tmp, Label* L_fast_path, Label* L_slow_path) {
-  assert(L_fast_path != NULL || L_slow_path != NULL, "at least one is required");
-  assert_different_registers(klass, xthread, tmp);
-
-  Label L_fallthrough, L_tmp;
-  if (L_fast_path == NULL) {
-    L_fast_path = &L_fallthrough;
-  } else if (L_slow_path == NULL) {
-    L_slow_path = &L_fallthrough;
-  }
-
-  // Fast path check: class is fully initialized
-  lbu(tmp, Address(klass, InstanceKlass::init_state_offset()));
-  sub(tmp, tmp, InstanceKlass::fully_initialized);
-  beqz(tmp, *L_fast_path);
-
-  // Fast path check: current thread is initializer thread
-  ld(tmp, Address(klass, InstanceKlass::init_thread_offset()));
-
-  if (L_slow_path == &L_fallthrough) {
-    beq(xthread, tmp, *L_fast_path);
-    bind(*L_slow_path);
-  } else if (L_fast_path == &L_fallthrough) {
-    bne(xthread, tmp, *L_slow_path);
-    bind(*L_fast_path);
-  } else {
-    Unimplemented();
-  }
-}
-
 void MacroAssembler::verify_oop(Register reg, const char* s) {
   if (!VerifyOops) { return; }
 
@@ -3173,12 +3143,6 @@ void MacroAssembler::cmpptr(Register src1, Address src2, Label& equal) {
   la_patchable(t0, src2, offset);
   ld(t0, Address(t0, offset));
   beq(src1, t0, equal);
-}
-
-void MacroAssembler::load_method_holder(Register holder, Register method) {
-  ld(holder, Address(method, Method::const_offset()));                      // ConstMethod*
-  ld(holder, Address(holder, ConstMethod::constants_offset()));             // ConstantPool*
-  ld(holder, Address(holder, ConstantPool::pool_holder_offset_in_bytes())); // InstanceKlass*
 }
 
 // string indexof

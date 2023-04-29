@@ -90,18 +90,6 @@ static void select_different_registers(Register preserve,
 
 bool LIR_Assembler::is_small_constant(LIR_Opr opr) { Unimplemented(); return false; }
 
-void LIR_Assembler::clinit_barrier(ciMethod* method) {
-  assert(VM_Version::supports_fast_class_init_checks(), "sanity");
-  assert(!method->holder()->is_not_initialized(), "initialization should have been started");
-
-  Label L_skip_barrier;
-
-  __ mov_metadata(t1, method->holder()->constant_encoding());
-  __ clinit_barrier(t1, t0, &L_skip_barrier /* L_fast_path */);
-  __ far_jump(RuntimeAddress(SharedRuntime::get_handle_wrong_method_stub()));
-  __ bind(L_skip_barrier);
-}
-
 LIR_Opr LIR_Assembler::receiverOpr() {
   return FrameMap::receiver_opr;
 }
