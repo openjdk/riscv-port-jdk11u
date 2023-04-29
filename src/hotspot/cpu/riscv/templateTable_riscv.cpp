@@ -2307,7 +2307,7 @@ void TemplateTable::resolve_cache_and_index(int byte_no,
   const Register temp = x9;
   assert_different_registers(Rcache, index, temp);
 
-  Label resolved, clinit_barrier_slow;
+  Label resolved;
 
   Bytecodes::Code code = bytecode();
   switch (code) {
@@ -2321,10 +2321,6 @@ void TemplateTable::resolve_cache_and_index(int byte_no,
   __ mv(t0, (int) code);
   __ beq(temp, t0, resolved);
 
-  // resolve first time through
-  // Class initialization barrier slow path lands here as well.
-  __ bind(clinit_barrier_slow);
-
   address entry = CAST_FROM_FN_PTR(address, InterpreterRuntime::resolve_from_cache);
   __ mv(temp, (int) code);
   __ call_VM(noreg, entry, temp);
@@ -2334,13 +2330,6 @@ void TemplateTable::resolve_cache_and_index(int byte_no,
   // n.b. unlike x86 Rcache is now rcpool plus the indexed offset
   // so all clients ofthis method must be modified accordingly
   __ bind(resolved);
-
-  // Class initialization barrier for static methods
-  if (VM_Version::supports_fast_class_init_checks() && bytecode() == Bytecodes::_invokestatic) {
-    __ load_resolved_method_at_index(byte_no, temp, Rcache);
-    __ load_method_holder(temp, temp);
-    __ clinit_barrier(temp, t0, NULL, &clinit_barrier_slow);
-  }
 }
 
 // The Rcache and index registers must be set before call
@@ -3431,7 +3420,9 @@ void TemplateTable::invokeinterface(int byte_no) {
   __ profile_virtual_call(x13, x30, x9);
 
   // Get declaring interface class from method, and itable index
-  __ load_method_holder(x10, xmethod);
+  __ ld(x10, Address(xmethod, Method::const_offset()));
+  __ ld(x10, Address(x10, ConstMethod::constants_offset()));
+  __ ld(x10, Address(x10, ConstantPool::pool_holder_offset_in_bytes()));
   __ lwu(xmethod, Address(xmethod, Method::itable_index_offset()));
   __ subw(xmethod, xmethod, Method::itable_index_max);
   __ negw(xmethod, xmethod);
