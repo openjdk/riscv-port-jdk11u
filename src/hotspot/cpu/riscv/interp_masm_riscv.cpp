@@ -1841,7 +1841,7 @@ void InterpreterMacroAssembler::profile_return_type(Register mdp, Register ret, 
       beq(t0, tmp, do_profile);
       get_method(tmp);
       lhu(t0, Address(tmp, Method::intrinsic_id_offset_in_bytes()));
-      li(t1, static_cast<int>(vmIntrinsics::_compiledLambdaForm));
+      li(t1, vmIntrinsics::_compiledLambdaForm);
       bne(t0, t1, profile_continue);
       bind(do_profile);
     }
