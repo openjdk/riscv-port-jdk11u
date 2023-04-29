@@ -851,6 +851,109 @@ private:
   void load_reserved(Register addr, enum operand_size size, Assembler::Aqrl acquire);
   void store_conditional(Register addr, Register new_val, enum operand_size size, Assembler::Aqrl release);
 
+public:
+  void string_compare(Register str1, Register str2,
+                      Register cnt1, Register cnt2, Register result,
+                      Register tmp1, Register tmp2, Register tmp3,
+                      int ae);
+
+  void string_indexof_char_short(Register str1, Register cnt1,
+                                 Register ch, Register result,
+                                 bool isL);
+
+  void string_indexof_char(Register str1, Register cnt1,
+                           Register ch, Register result,
+                           Register tmp1, Register tmp2,
+                           Register tmp3, Register tmp4,
+                           bool isL);
+
+  void string_indexof(Register str1, Register str2,
+                      Register cnt1, Register cnt2,
+                      Register tmp1, Register tmp2,
+                      Register tmp3, Register tmp4,
+                      Register tmp5, Register tmp6,
+                      Register result, int ae);
+
+  void string_indexof_linearscan(Register haystack, Register needle,
+                                 Register haystack_len, Register needle_len,
+                                 Register tmp1, Register tmp2,
+                                 Register tmp3, Register tmp4,
+                                 int needle_con_cnt, Register result, int ae);
+
+  void arrays_equals(Register r1, Register r2,
+                     Register tmp3, Register tmp4,
+                     Register tmp5, Register tmp6,
+                     Register result, Register cnt1,
+                     int elem_size);
+
+  void string_equals(Register r1, Register r2,
+                     Register result, Register cnt1,
+                     int elem_size);
+
+  // refer to conditional_branches and float_conditional_branches
+  static const int bool_test_bits = 3;
+  static const int neg_cond_bits = 2;
+  static const int unsigned_branch_mask = 1 << bool_test_bits;
+  static const int double_branch_mask = 1 << bool_test_bits;
+
+  // cmp
+  void cmp_branch(int cmpFlag,
+                  Register op1, Register op2,
+                  Label& label, bool is_far = false);
+
+  void float_cmp_branch(int cmpFlag,
+                        FloatRegister op1, FloatRegister op2,
+                        Label& label, bool is_far = false);
+
+  void enc_cmpUEqNeLeGt_imm0_branch(int cmpFlag, Register op,
+                                    Label& L, bool is_far = false);
+
+  void enc_cmpEqNe_imm0_branch(int cmpFlag, Register op,
+                               Label& L, bool is_far = false);
+
+  void enc_cmove(int cmpFlag,
+                 Register op1, Register op2,
+                 Register dst, Register src);
+
+  void spill(Register r, bool is64, int offset) {
+    is64 ? sd(r, Address(sp, offset))
+         : sw(r, Address(sp, offset));
+  }
+
+  void spill(FloatRegister f, bool is64, int offset) {
+    is64 ? fsd(f, Address(sp, offset))
+         : fsw(f, Address(sp, offset));
+  }
+
+  void spill(VectorRegister v, int offset) {
+    add(t0, sp, offset);
+    vs1r_v(v, t0);
+  }
+
+  void unspill(Register r, bool is64, int offset) {
+    is64 ? ld(r, Address(sp, offset))
+         : lw(r, Address(sp, offset));
+  }
+
+  void unspillu(Register r, bool is64, int offset) {
+    is64 ? ld(r, Address(sp, offset))
+         : lwu(r, Address(sp, offset));
+  }
+
+  void unspill(FloatRegister f, bool is64, int offset) {
+    is64 ? fld(f, Address(sp, offset))
+         : flw(f, Address(sp, offset));
+  }
+
+  void unspill(VectorRegister v, int offset) {
+    add(t0, sp, offset);
+    vl1r_v(v, t0);
+  }
+
+  void minmax_FD(FloatRegister dst,
+                 FloatRegister src1, FloatRegister src2,
+                 bool is_double, bool is_min);
+
 };
 
 #ifdef ASSERT
