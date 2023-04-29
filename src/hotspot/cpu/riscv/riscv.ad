@@ -997,7 +997,7 @@ void MachBreakpointNode::format(PhaseRegAlloc *ra_, outputStream *st) const {
 #endif
 
 void MachBreakpointNode::emit(CodeBuffer &cbuf, PhaseRegAlloc *ra_) const {
-  C2_MacroAssembler _masm(&cbuf);
+  MacroAssembler _masm(&cbuf);
   Assembler::CompressibleRegion cr(&_masm);
   __ ebreak();
 }
@@ -1015,7 +1015,7 @@ uint MachBreakpointNode::size(PhaseRegAlloc *ra_) const {
 #endif
 
   void MachNopNode::emit(CodeBuffer &cbuf, PhaseRegAlloc*) const {
-    C2_MacroAssembler _masm(&cbuf);
+    MacroAssembler _masm(&cbuf);
     Assembler::CompressibleRegion cr(&_masm); // nops shall be 2-byte under RVC for alignment purposes.
     for (int i = 0; i < _count; i++) {
       __ nop();
@@ -1074,7 +1074,7 @@ void MachPrologNode::format(PhaseRegAlloc *ra_, outputStream *st) const {
 void MachPrologNode::emit(CodeBuffer &cbuf, PhaseRegAlloc *ra_) const {
   assert_cond(ra_ != NULL);
   Compile* C = ra_->C;
-  C2_MacroAssembler _masm(&cbuf);
+  MacroAssembler _masm(&cbuf);
 
   // n.b. frame size includes space for return pc and fp
   const int framesize = C->output()->frame_size_in_bytes();
@@ -1150,7 +1150,7 @@ void MachEpilogNode::format(PhaseRegAlloc *ra_, outputStream *st) const {
 void MachEpilogNode::emit(CodeBuffer &cbuf, PhaseRegAlloc *ra_) const {
   assert_cond(ra_ != NULL);
   Compile* C = ra_->C;
-  C2_MacroAssembler _masm(&cbuf);
+  MacroAssembler _masm(&cbuf);
   assert_cond(C != NULL);
   int framesize = C->output()->frame_size_in_bytes();
 
@@ -1251,7 +1251,7 @@ uint MachSpillCopyNode::implementation(CodeBuffer *cbuf, PhaseRegAlloc *ra_, boo
   int dst_offset = ra_->reg2offset(dst_lo);
 
   if (cbuf != NULL) {
-    C2_MacroAssembler _masm(cbuf);
+    MacroAssembler _masm(cbuf);
     Assembler::CompressibleRegion cr(&_masm);
     switch (src_lo_rc) {
       case rc_int:
@@ -1371,7 +1371,7 @@ void BoxLockNode::format(PhaseRegAlloc *ra_, outputStream *st) const {
 #endif
 
 void BoxLockNode::emit(CodeBuffer &cbuf, PhaseRegAlloc *ra_) const {
-  C2_MacroAssembler _masm(&cbuf);
+  MacroAssembler _masm(&cbuf);
 
   assert_cond(ra_ != NULL);
   int offset = ra_->reg2offset(in_RegMask(0).find_first_elem());
@@ -1422,7 +1422,7 @@ void MachUEPNode::format(PhaseRegAlloc* ra_, outputStream* st) const
 void MachUEPNode::emit(CodeBuffer& cbuf, PhaseRegAlloc* ra_) const
 {
   // This is the unverified entry point.
-  C2_MacroAssembler _masm(&cbuf);
+  MacroAssembler _masm(&cbuf);
 
   Label skip;
   __ cmp_klass(j_rarg0, t1, t0, skip);
@@ -1449,7 +1449,7 @@ int HandlerImpl::emit_exception_handler(CodeBuffer& cbuf)
   // j #exception_blob_entry_point
   // Note that the code buffer's insts_mark is always relative to insts.
   // That's why we must use the macroassembler to generate a handler.
-  C2_MacroAssembler _masm(&cbuf);
+  MacroAssembler _masm(&cbuf);
   address base = __ start_a_stub(size_exception_handler());
   if (base == NULL) {
     ciEnv::current()->record_failure("CodeCache is full");
@@ -1467,7 +1467,7 @@ int HandlerImpl::emit_deopt_handler(CodeBuffer& cbuf)
 {
   // Note that the code buffer's insts_mark is always relative to insts.
   // That's why we must use the macroassembler to generate a handler.
-  C2_MacroAssembler _masm(&cbuf);
+  MacroAssembler _masm(&cbuf);
   address base = __ start_a_stub(size_deopt_handler());
   if (base == NULL) {
     ciEnv::current()->record_failure("CodeCache is full");
@@ -1848,7 +1848,7 @@ encode %{
   // BEGIN Non-volatile memory access
 
   enc_class riscv_enc_li_imm(iRegIorL dst, immIorL src) %{
-    C2_MacroAssembler _masm(&cbuf);
+    MacroAssembler _masm(&cbuf);
     Assembler::CompressibleRegion cr(&_masm);
     int64_t con = (int64_t)$src$$constant;
     Register dst_reg = as_Register($dst$$reg);
@@ -1856,7 +1856,7 @@ encode %{
   %}
 
   enc_class riscv_enc_mov_p(iRegP dst, immP src) %{
-    C2_MacroAssembler _masm(&cbuf);
+    MacroAssembler _masm(&cbuf);
     Register dst_reg = as_Register($dst$$reg);
     address con = (address)$src$$constant;
     if (con == NULL || con == (address)1) {
@@ -1875,7 +1875,7 @@ encode %{
   %}
 
   enc_class riscv_enc_mov_p1(iRegP dst) %{
-    C2_MacroAssembler _masm(&cbuf);
+    MacroAssembler _masm(&cbuf);
     Assembler::CompressibleRegion cr(&_masm);
     Register dst_reg = as_Register($dst$$reg);
     __ li(dst_reg, 1);
@@ -1893,12 +1893,12 @@ encode %{
   %}
 
   enc_class riscv_enc_mov_byte_map_base(iRegP dst) %{
-    C2_MacroAssembler _masm(&cbuf);
+    MacroAssembler _masm(&cbuf);
     __ load_byte_map_base($dst$$Register);
   %}
 
   enc_class riscv_enc_mov_n(iRegN dst, immN src) %{
-    C2_MacroAssembler _masm(&cbuf);
+    MacroAssembler _masm(&cbuf);
     Register dst_reg = as_Register($dst$$reg);
     address con = (address)$src$$constant;
     if (con == NULL) {
@@ -1911,13 +1911,13 @@ encode %{
   %}
 
   enc_class riscv_enc_mov_zero(iRegNorP dst) %{
-    C2_MacroAssembler _masm(&cbuf);
+    MacroAssembler _masm(&cbuf);
     Register dst_reg = as_Register($dst$$reg);
     __ mv(dst_reg, zr);
   %}
 
   enc_class riscv_enc_mov_nk(iRegN dst, immNKlass src) %{
-    C2_MacroAssembler _masm(&cbuf);
+    MacroAssembler _masm(&cbuf);
     Register dst_reg = as_Register($dst$$reg);
     address con = (address)$src$$constant;
     if (con == NULL) {
@@ -1930,42 +1930,42 @@ encode %{
   %}
 
   enc_class riscv_enc_cmpxchgw(iRegINoSp res, memory mem, iRegINoSp oldval, iRegINoSp newval) %{
-    C2_MacroAssembler _masm(&cbuf);
+    MacroAssembler _masm(&cbuf);
     __ cmpxchg(as_Register($mem$$base), $oldval$$Register, $newval$$Register, Assembler::int32,
                /*acquire*/ Assembler::relaxed, /*release*/ Assembler::rl, $res$$Register,
                /*result as bool*/ true);
   %}
 
   enc_class riscv_enc_cmpxchgn(iRegINoSp res, memory mem, iRegINoSp oldval, iRegINoSp newval) %{
-    C2_MacroAssembler _masm(&cbuf);
+    MacroAssembler _masm(&cbuf);
     __ cmpxchg(as_Register($mem$$base), $oldval$$Register, $newval$$Register, Assembler::uint32,
                /*acquire*/ Assembler::relaxed, /*release*/ Assembler::rl, $res$$Register,
                /*result as bool*/ true);
   %}
 
   enc_class riscv_enc_cmpxchg(iRegINoSp res, memory mem, iRegLNoSp oldval, iRegLNoSp newval) %{
-    C2_MacroAssembler _masm(&cbuf);
+    MacroAssembler _masm(&cbuf);
     __ cmpxchg(as_Register($mem$$base), $oldval$$Register, $newval$$Register, Assembler::int64,
                /*acquire*/ Assembler::relaxed, /*release*/ Assembler::rl, $res$$Register,
                /*result as bool*/ true);
   %}
 
   enc_class riscv_enc_cmpxchgw_acq(iRegINoSp res, memory mem, iRegINoSp oldval, iRegINoSp newval) %{
-    C2_MacroAssembler _masm(&cbuf);
+    MacroAssembler _masm(&cbuf);
     __ cmpxchg(as_Register($mem$$base), $oldval$$Register, $newval$$Register, Assembler::int32,
                /*acquire*/ Assembler::aq, /*release*/ Assembler::rl, $res$$Register,
                /*result as bool*/ true);
   %}
 
   enc_class riscv_enc_cmpxchgn_acq(iRegINoSp res, memory mem, iRegINoSp oldval, iRegINoSp newval) %{
-    C2_MacroAssembler _masm(&cbuf);
+    MacroAssembler _masm(&cbuf);
     __ cmpxchg(as_Register($mem$$base), $oldval$$Register, $newval$$Register, Assembler::uint32,
                /*acquire*/ Assembler::aq, /*release*/ Assembler::rl, $res$$Register,
                /*result as bool*/ true);
   %}
 
   enc_class riscv_enc_cmpxchg_acq(iRegINoSp res, memory mem, iRegLNoSp oldval, iRegLNoSp newval) %{
-    C2_MacroAssembler _masm(&cbuf);
+    MacroAssembler _masm(&cbuf);
     __ cmpxchg(as_Register($mem$$base), $oldval$$Register, $newval$$Register, Assembler::int64,
                /*acquire*/ Assembler::aq, /*release*/ Assembler::rl, $res$$Register,
                /*result as bool*/ true);
@@ -1974,13 +1974,13 @@ encode %{
   // compare and branch instruction encodings
 
   enc_class riscv_enc_j(label lbl) %{
-    C2_MacroAssembler _masm(&cbuf);
+    MacroAssembler _masm(&cbuf);
     Label* L = $lbl$$label;
     __ j(*L);
   %}
 
   enc_class riscv_enc_far_cmpULtGe_imm0_branch(cmpOpULtGe cmp, iRegIorL op1, label lbl) %{
-    C2_MacroAssembler _masm(&cbuf);
+    MacroAssembler _masm(&cbuf);
     Label* L = $lbl$$label;
     switch ($cmp$$cmpcode) {
       case(BoolTest::ge):
@@ -2004,7 +2004,7 @@ encode %{
 
     Label miss;
     Label done;
-    C2_MacroAssembler _masm(&cbuf);
+    MacroAssembler _masm(&cbuf);
     __ check_klass_subtype_slow_path(sub_reg, super_reg, temp_reg, result_reg,
                                      NULL, &miss);
     if ($primary) {
@@ -2023,7 +2023,7 @@ encode %{
   %}
 
   enc_class riscv_enc_java_static_call(method meth) %{
-    C2_MacroAssembler _masm(&cbuf);
+    MacroAssembler _masm(&cbuf);
 
     address addr = (address)$meth$$method;
     address call = NULL;
@@ -2055,7 +2055,7 @@ encode %{
   %}
 
   enc_class riscv_enc_java_dynamic_call(method meth) %{
-    C2_MacroAssembler _masm(&cbuf);
+    MacroAssembler _masm(&cbuf);
     int method_index = resolved_method_index(cbuf);
     address call = __ ic_call((address)$meth$$method, method_index);
     if (call == NULL) {
@@ -2065,7 +2065,7 @@ encode %{
   %}
 
   enc_class riscv_enc_call_epilog() %{
-    C2_MacroAssembler _masm(&cbuf);
+    MacroAssembler _masm(&cbuf);
     if (VerifyStackAtCalls) {
       // Check that stack depth is unchanged: find majik cookie on stack
       __ call_Unimplemented();
@@ -2073,7 +2073,7 @@ encode %{
   %}
 
   enc_class riscv_enc_java_to_runtime(method meth) %{
-    C2_MacroAssembler _masm(&cbuf);
+    MacroAssembler _masm(&cbuf);
 
     // some calls to generated routines (arraycopy code) are scheduled
     // by C2 as runtime calls. if so we can call them using a jr (they
@@ -2102,7 +2102,7 @@ encode %{
 
   // using the cr register as the bool result: 0 for success; others failed.
   enc_class riscv_enc_fast_lock(iRegP object, iRegP box, iRegP tmp1, iRegP tmp2) %{
-    C2_MacroAssembler _masm(&cbuf);
+    MacroAssembler _masm(&cbuf);
     Register flag = t1;
     Register oop = as_Register($object$$reg);
     Register box = as_Register($box$$reg);
@@ -2189,7 +2189,7 @@ encode %{
 
   // using cr flag to indicate the fast_unlock result: 0 for success; others failed.
   enc_class riscv_enc_fast_unlock(iRegP object, iRegP box, iRegP tmp1, iRegP tmp2) %{
-    C2_MacroAssembler _masm(&cbuf);
+    MacroAssembler _masm(&cbuf);
     Register flag = t1;
     Register oop = as_Register($object$$reg);
     Register box = as_Register($box$$reg);
@@ -2262,7 +2262,7 @@ encode %{
   // arithmetic encodings
 
   enc_class riscv_enc_divw(iRegI dst, iRegI src1, iRegI src2) %{
-    C2_MacroAssembler _masm(&cbuf);
+    MacroAssembler _masm(&cbuf);
     Register dst_reg = as_Register($dst$$reg);
     Register src1_reg = as_Register($src1$$reg);
     Register src2_reg = as_Register($src2$$reg);
@@ -2270,7 +2270,7 @@ encode %{
   %}
 
   enc_class riscv_enc_div(iRegI dst, iRegI src1, iRegI src2) %{
-    C2_MacroAssembler _masm(&cbuf);
+    MacroAssembler _masm(&cbuf);
     Register dst_reg = as_Register($dst$$reg);
     Register src1_reg = as_Register($src1$$reg);
     Register src2_reg = as_Register($src2$$reg);
@@ -2278,7 +2278,7 @@ encode %{
   %}
 
   enc_class riscv_enc_modw(iRegI dst, iRegI src1, iRegI src2) %{
-    C2_MacroAssembler _masm(&cbuf);
+    MacroAssembler _masm(&cbuf);
     Register dst_reg = as_Register($dst$$reg);
     Register src1_reg = as_Register($src1$$reg);
     Register src2_reg = as_Register($src2$$reg);
@@ -2286,7 +2286,7 @@ encode %{
   %}
 
   enc_class riscv_enc_mod(iRegI dst, iRegI src1, iRegI src2) %{
-    C2_MacroAssembler _masm(&cbuf);
+    MacroAssembler _masm(&cbuf);
     Register dst_reg = as_Register($dst$$reg);
     Register src1_reg = as_Register($src1$$reg);
     Register src2_reg = as_Register($src2$$reg);
@@ -2294,14 +2294,14 @@ encode %{
   %}
 
   enc_class riscv_enc_tail_call(iRegP jump_target) %{
-    C2_MacroAssembler _masm(&cbuf);
+    MacroAssembler _masm(&cbuf);
     Assembler::CompressibleRegion cr(&_masm);
     Register target_reg = as_Register($jump_target$$reg);
     __ jr(target_reg);
   %}
 
   enc_class riscv_enc_tail_jmp(iRegP jump_target) %{
-    C2_MacroAssembler _masm(&cbuf);
+    MacroAssembler _masm(&cbuf);
     Assembler::CompressibleRegion cr(&_masm);
     Register target_reg = as_Register($jump_target$$reg);
     // exception oop should be in x10
@@ -2312,12 +2312,12 @@ encode %{
   %}
 
   enc_class riscv_enc_rethrow() %{
-    C2_MacroAssembler _masm(&cbuf);
+    MacroAssembler _masm(&cbuf);
     __ far_jump(RuntimeAddress(OptoRuntime::rethrow_stub()));
   %}
 
   enc_class riscv_enc_ret() %{
-    C2_MacroAssembler _masm(&cbuf);
+    MacroAssembler _masm(&cbuf);
     Assembler::CompressibleRegion cr(&_masm);
     __ ret();
   %}
@@ -8506,7 +8506,7 @@ instruct cmpU_branch(cmpOpU cmp, iRegI op1, iRegI op2, label lbl)
   format %{ "b$cmp  $op1, $op2, $lbl\t#@cmpU_branch" %}
 
   ins_encode %{
-    __ cmp_branch($cmp$$cmpcode | C2_MacroAssembler::unsigned_branch_mask, as_Register($op1$$reg),
+    __ cmp_branch($cmp$$cmpcode | MacroAssembler::unsigned_branch_mask, as_Register($op1$$reg),
                   as_Register($op2$$reg), *($lbl$$label));
   %}
 
@@ -8526,7 +8526,7 @@ instruct cmpU_loop(cmpOpU cmp, iRegI op1, iRegI op2, label lbl)
   format %{ "b$cmp  $op1, $op2, $lbl\t#@cmpU_loop" %}
 
   ins_encode %{
-    __ cmp_branch($cmp$$cmpcode | C2_MacroAssembler::unsigned_branch_mask, as_Register($op1$$reg),
+    __ cmp_branch($cmp$$cmpcode | MacroAssembler::unsigned_branch_mask, as_Register($op1$$reg),
                   as_Register($op2$$reg), *($lbl$$label));
   %}
 
@@ -8585,7 +8585,7 @@ instruct cmpUL_branch(cmpOpU cmp, iRegL op1, iRegL op2, label lbl)
   format %{ "b$cmp  $op1, $op2, $lbl\t#@cmpUL_branch" %}
 
   ins_encode %{
-    __ cmp_branch($cmp$$cmpcode | C2_MacroAssembler::unsigned_branch_mask, as_Register($op1$$reg),
+    __ cmp_branch($cmp$$cmpcode | MacroAssembler::unsigned_branch_mask, as_Register($op1$$reg),
                   as_Register($op2$$reg), *($lbl$$label));
   %}
 
@@ -8604,7 +8604,7 @@ instruct cmpUL_loop(cmpOpU cmp, iRegL op1, iRegL op2, label lbl)
   format %{ "b$cmp  $op1, $op2, $lbl\t#@cmpUL_loop" %}
 
   ins_encode %{
-    __ cmp_branch($cmp$$cmpcode | C2_MacroAssembler::unsigned_branch_mask, as_Register($op1$$reg),
+    __ cmp_branch($cmp$$cmpcode | MacroAssembler::unsigned_branch_mask, as_Register($op1$$reg),
                   as_Register($op2$$reg), *($lbl$$label));
   %}
 
@@ -8625,7 +8625,7 @@ instruct cmpP_branch(cmpOpU cmp, iRegP op1, iRegP op2, label lbl)
   format %{ "b$cmp  $op1, $op2, $lbl\t#@cmpP_branch" %}
 
   ins_encode %{
-    __ cmp_branch($cmp$$cmpcode | C2_MacroAssembler::unsigned_branch_mask, as_Register($op1$$reg),
+    __ cmp_branch($cmp$$cmpcode | MacroAssembler::unsigned_branch_mask, as_Register($op1$$reg),
                   as_Register($op2$$reg), *($lbl$$label));
   %}
 
@@ -8645,7 +8645,7 @@ instruct cmpP_loop(cmpOpU cmp, iRegP op1, iRegP op2, label lbl)
   format %{ "b$cmp  $op1, $op2, $lbl\t#@cmpP_loop" %}
 
   ins_encode %{
-    __ cmp_branch($cmp$$cmpcode | C2_MacroAssembler::unsigned_branch_mask, as_Register($op1$$reg),
+    __ cmp_branch($cmp$$cmpcode | MacroAssembler::unsigned_branch_mask, as_Register($op1$$reg),
                   as_Register($op2$$reg), *($lbl$$label));
   %}
 
@@ -8666,7 +8666,7 @@ instruct cmpN_branch(cmpOpU cmp, iRegN op1, iRegN op2, label lbl)
   format %{ "b$cmp  $op1, $op2, $lbl\t#@cmpN_branch" %}
 
   ins_encode %{
-    __ cmp_branch($cmp$$cmpcode | C2_MacroAssembler::unsigned_branch_mask, as_Register($op1$$reg),
+    __ cmp_branch($cmp$$cmpcode | MacroAssembler::unsigned_branch_mask, as_Register($op1$$reg),
                   as_Register($op2$$reg), *($lbl$$label));
   %}
 
@@ -8686,7 +8686,7 @@ instruct cmpN_loop(cmpOpU cmp, iRegN op1, iRegN op2, label lbl)
   format %{ "b$cmp  $op1, $op2, $lbl\t#@cmpN_loop" %}
 
   ins_encode %{
-    __ cmp_branch($cmp$$cmpcode | C2_MacroAssembler::unsigned_branch_mask, as_Register($op1$$reg),
+    __ cmp_branch($cmp$$cmpcode | MacroAssembler::unsigned_branch_mask, as_Register($op1$$reg),
                   as_Register($op2$$reg), *($lbl$$label));
   %}
 
@@ -8741,7 +8741,7 @@ instruct cmpD_branch(cmpOp cmp, fRegD op1, fRegD op2, label lbl)
   format %{ "double_b$cmp $op1, $op2\t#@cmpD_branch"%}
 
   ins_encode %{
-    __ float_cmp_branch($cmp$$cmpcode | C2_MacroAssembler::double_branch_mask, as_FloatRegister($op1$$reg),
+    __ float_cmp_branch($cmp$$cmpcode | MacroAssembler::double_branch_mask, as_FloatRegister($op1$$reg),
                         as_FloatRegister($op2$$reg), *($lbl$$label));
   %}
 
@@ -8759,7 +8759,7 @@ instruct cmpD_loop(cmpOp cmp, fRegD op1, fRegD op2, label lbl)
   format %{ "double_b$cmp $op1, $op2\t#@cmpD_loop"%}
 
   ins_encode %{
-    __ float_cmp_branch($cmp$$cmpcode | C2_MacroAssembler::double_branch_mask, as_FloatRegister($op1$$reg),
+    __ float_cmp_branch($cmp$$cmpcode | MacroAssembler::double_branch_mask, as_FloatRegister($op1$$reg),
                         as_FloatRegister($op2$$reg), *($lbl$$label));
   %}
 
@@ -9080,7 +9080,7 @@ instruct far_cmpU_branch(cmpOpU cmp, iRegI op1, iRegI op2, label lbl) %{
   format %{ "far_b$cmp $op1, $op2, $lbl\t#@far_cmpU_branch" %}
 
   ins_encode %{
-    __ cmp_branch($cmp$$cmpcode | C2_MacroAssembler::unsigned_branch_mask, as_Register($op1$$reg),
+    __ cmp_branch($cmp$$cmpcode | MacroAssembler::unsigned_branch_mask, as_Register($op1$$reg),
                        as_Register($op2$$reg), *($lbl$$label), /* is_far */ true);
   %}
 
@@ -9095,7 +9095,7 @@ instruct far_cmpU_loop(cmpOpU cmp, iRegI op1, iRegI op2, label lbl) %{
   format %{ "far_b$cmp $op1, $op2, $lbl\t#@far_cmpU_loop" %}
 
   ins_encode %{
-    __ cmp_branch($cmp$$cmpcode | C2_MacroAssembler::unsigned_branch_mask, as_Register($op1$$reg),
+    __ cmp_branch($cmp$$cmpcode | MacroAssembler::unsigned_branch_mask, as_Register($op1$$reg),
                        as_Register($op2$$reg), *($lbl$$label), /* is_far */ true);
   %}
 
@@ -9138,7 +9138,7 @@ instruct far_cmpUL_branch(cmpOpU cmp, iRegL op1, iRegL op2, label lbl) %{
   format %{ "far_b$cmp  $op1, $op2, $lbl\t#@far_cmpUL_branch" %}
 
   ins_encode %{
-    __ cmp_branch($cmp$$cmpcode | C2_MacroAssembler::unsigned_branch_mask, as_Register($op1$$reg),
+    __ cmp_branch($cmp$$cmpcode | MacroAssembler::unsigned_branch_mask, as_Register($op1$$reg),
                        as_Register($op2$$reg), *($lbl$$label), /* is_far */ true);
   %}
 
@@ -9153,7 +9153,7 @@ instruct far_cmpUL_loop(cmpOpU cmp, iRegL op1, iRegL op2, label lbl) %{
   format %{ "far_b$cmp  $op1, $op2, $lbl\t#@far_cmpUL_loop" %}
 
   ins_encode %{
-    __ cmp_branch($cmp$$cmpcode | C2_MacroAssembler::unsigned_branch_mask, as_Register($op1$$reg),
+    __ cmp_branch($cmp$$cmpcode | MacroAssembler::unsigned_branch_mask, as_Register($op1$$reg),
                        as_Register($op2$$reg), *($lbl$$label), /* is_far */ true);
   %}
 
@@ -9171,7 +9171,7 @@ instruct far_cmpP_branch(cmpOpU cmp, iRegP op1, iRegP op2, label lbl)
   format %{ "far_b$cmp  $op1, $op2, $lbl\t#@far_cmpP_branch" %}
 
   ins_encode %{
-    __ cmp_branch($cmp$$cmpcode | C2_MacroAssembler::unsigned_branch_mask, as_Register($op1$$reg),
+    __ cmp_branch($cmp$$cmpcode | MacroAssembler::unsigned_branch_mask, as_Register($op1$$reg),
                        as_Register($op2$$reg), *($lbl$$label), /* is_far */ true);
   %}
 
@@ -9189,7 +9189,7 @@ instruct far_cmpP_loop(cmpOpU cmp, iRegP op1, iRegP op2, label lbl)
   format %{ "far_b$cmp  $op1, $op2, $lbl\t#@far_cmpP_loop" %}
 
   ins_encode %{
-    __ cmp_branch($cmp$$cmpcode | C2_MacroAssembler::unsigned_branch_mask, as_Register($op1$$reg),
+    __ cmp_branch($cmp$$cmpcode | MacroAssembler::unsigned_branch_mask, as_Register($op1$$reg),
                        as_Register($op2$$reg), *($lbl$$label), /* is_far */ true);
   %}
 
@@ -9207,7 +9207,7 @@ instruct far_cmpN_branch(cmpOpU cmp, iRegN op1, iRegN op2, label lbl)
   format %{ "far_b$cmp  $op1, $op2, $lbl\t#@far_cmpN_branch" %}
 
   ins_encode %{
-    __ cmp_branch($cmp$$cmpcode | C2_MacroAssembler::unsigned_branch_mask, as_Register($op1$$reg),
+    __ cmp_branch($cmp$$cmpcode | MacroAssembler::unsigned_branch_mask, as_Register($op1$$reg),
                        as_Register($op2$$reg), *($lbl$$label), /* is_far */ true);
   %}
 
@@ -9225,7 +9225,7 @@ instruct far_cmpN_loop(cmpOpU cmp, iRegN op1, iRegN op2, label lbl)
   format %{ "far_b$cmp  $op1, $op2, $lbl\t#@far_cmpN_loop" %}
 
   ins_encode %{
-    __ cmp_branch($cmp$$cmpcode | C2_MacroAssembler::unsigned_branch_mask, as_Register($op1$$reg),
+    __ cmp_branch($cmp$$cmpcode | MacroAssembler::unsigned_branch_mask, as_Register($op1$$reg),
                   as_Register($op2$$reg), *($lbl$$label), /* is_far */ true);
   %}
 
@@ -9276,7 +9276,7 @@ instruct far_cmpD_branch(cmpOp cmp, fRegD op1, fRegD op2, label lbl)
   format %{ "far_double_b$cmp $op1, $op2\t#@far_cmpD_branch"%}
 
   ins_encode %{
-    __ float_cmp_branch($cmp$$cmpcode | C2_MacroAssembler::double_branch_mask, as_FloatRegister($op1$$reg),
+    __ float_cmp_branch($cmp$$cmpcode | MacroAssembler::double_branch_mask, as_FloatRegister($op1$$reg),
                         as_FloatRegister($op2$$reg), *($lbl$$label), /* is_far */ true);
   %}
 
@@ -9292,7 +9292,7 @@ instruct far_cmpD_loop(cmpOp cmp, fRegD op1, fRegD op2, label lbl)
   format %{ "far_double_b$cmp $op1, $op2\t#@far_cmpD_loop"%}
 
   ins_encode %{
-    __ float_cmp_branch($cmp$$cmpcode | C2_MacroAssembler::double_branch_mask, as_FloatRegister($op1$$reg),
+    __ float_cmp_branch($cmp$$cmpcode | MacroAssembler::double_branch_mask, as_FloatRegister($op1$$reg),
                         as_FloatRegister($op2$$reg), *($lbl$$label), /* is_far */ true);
   %}
 
@@ -9616,7 +9616,7 @@ instruct cmovI_cmpU(iRegINoSp dst, iRegI src, iRegI op1, iRegI op2, cmpOpU cop) 
          %}
 
   ins_encode %{
-    __ enc_cmove($cop$$cmpcode | C2_MacroAssembler::unsigned_branch_mask,
+    __ enc_cmove($cop$$cmpcode | MacroAssembler::unsigned_branch_mask,
                  as_Register($op1$$reg), as_Register($op2$$reg),
                  as_Register($dst$$reg), as_Register($src$$reg));
   %}
@@ -9673,7 +9673,7 @@ instruct cmovL_cmpUL(iRegLNoSp dst, iRegL src, iRegL op1, iRegL op2, cmpOpU cop)
          %}
 
   ins_encode %{
-    __ enc_cmove($cop$$cmpcode | C2_MacroAssembler::unsigned_branch_mask,
+    __ enc_cmove($cop$$cmpcode | MacroAssembler::unsigned_branch_mask,
                  as_Register($op1$$reg), as_Register($op2$$reg),
                  as_Register($dst$$reg), as_Register($src$$reg));
   %}
@@ -9691,7 +9691,7 @@ instruct cmovI_cmpUL(iRegINoSp dst, iRegI src, iRegL op1, iRegL op2, cmpOpU cop)
          %}
 
   ins_encode %{
-    __ enc_cmove($cop$$cmpcode | C2_MacroAssembler::unsigned_branch_mask,
+    __ enc_cmove($cop$$cmpcode | MacroAssembler::unsigned_branch_mask,
                  as_Register($op1$$reg), as_Register($op2$$reg),
                  as_Register($dst$$reg), as_Register($src$$reg));
   %}
