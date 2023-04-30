@@ -230,8 +230,6 @@ inline JavaCallWrapper** frame::entry_frame_call_wrapper_addr() const {
 
 
 // Compiled frames
-PRAGMA_DIAG_PUSH
-PRAGMA_NONNULL_IGNORED
 inline oop frame::saved_oop_result(RegisterMap* map) const {
   oop* result_adr = (oop *)map->location(x10->as_VMReg());
   guarantee(result_adr != NULL, "bad register save location");
@@ -243,6 +241,5 @@ inline void frame::set_saved_oop_result(RegisterMap* map, oop obj) {
   guarantee(result_adr != NULL, "bad register save location");
   *result_adr = obj;
 }
-PRAGMA_DIAG_POP
 
 #endif // CPU_RISCV_FRAME_RISCV_INLINE_HPP
