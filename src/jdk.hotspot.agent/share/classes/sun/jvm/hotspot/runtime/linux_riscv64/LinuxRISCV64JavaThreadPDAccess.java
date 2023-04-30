@@ -34,8 +34,6 @@ import sun.jvm.hotspot.runtime.*;
 import sun.jvm.hotspot.runtime.riscv64.*;
 import sun.jvm.hotspot.types.*;
 import sun.jvm.hotspot.utilities.*;
-import sun.jvm.hotspot.utilities.Observable;
-import sun.jvm.hotspot.utilities.Observer;
 
 public class LinuxRISCV64JavaThreadPDAccess implements JavaThreadPDAccess {
   private static AddressField  lastJavaFPField;
