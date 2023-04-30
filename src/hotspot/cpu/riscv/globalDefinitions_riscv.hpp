@@ -41,6 +41,4 @@ const bool CCallingConventionRequiresIntsAsLongs = false;
 
 #define SUPPORT_RESERVED_STACK_AREA
 
-#define COMPRESSED_CLASS_POINTERS_DEPENDS_ON_COMPRESSED_OOPS false
-
 #endif // CPU_RISCV_GLOBALDEFINITIONS_RISCV_HPP
