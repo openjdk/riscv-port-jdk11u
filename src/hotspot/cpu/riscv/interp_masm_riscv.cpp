@@ -782,13 +782,6 @@ void InterpreterMacroAssembler::lock_object(Register lock_reg)
     // Load object pointer into obj_reg c_rarg3
     ld(obj_reg, Address(lock_reg, obj_offset));
 
-    if (DiagnoseSyncOnValueBasedClasses != 0) {
-      load_klass(tmp, obj_reg);
-      lwu(tmp, Address(tmp, Klass::access_flags_offset()));
-      andi(tmp, tmp, JVM_ACC_IS_VALUE_BASED_CLASS);
-      bnez(tmp, slow_case);
-    }
-
     // Load (object->mark() | 1) into swap_reg
     ld(t0, Address(obj_reg, oopDesc::mark_offset_in_bytes()));
     ori(swap_reg, t0, 1);
