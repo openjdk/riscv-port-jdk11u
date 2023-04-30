@@ -1029,7 +1029,7 @@ uint MachBreakpointNode::size(PhaseRegAlloc *ra_) const {
 //=============================================================================
 const RegMask& MachConstantBaseNode::_out_RegMask = RegMask::Empty;
 
-int ConstantTable::calculate_table_base_offset() const {
+int Compile::ConstantTable::calculate_table_base_offset() const {
   return 0;  // absolute addressing, no offset
 }
 
@@ -1058,9 +1058,9 @@ void MachPrologNode::format(PhaseRegAlloc *ra_, outputStream *st) const {
   assert_cond(st != NULL && ra_ != NULL);
   Compile* C = ra_->C;
 
-  int framesize = C->output()->frame_slots() << LogBytesPerInt;
+  int framesize = C->frame_slots() << LogBytesPerInt;
 
-  if (C->output()->need_stack_bang(framesize)) {
+  if (C->need_stack_bang(framesize)) {
     st->print("# stack bang size=%d\n\t", framesize);
   }
 
@@ -1077,7 +1077,7 @@ void MachPrologNode::emit(CodeBuffer &cbuf, PhaseRegAlloc *ra_) const {
   MacroAssembler _masm(&cbuf);
 
   // n.b. frame size includes space for return pc and fp
-  const int framesize = C->output()->frame_size_in_bytes();
+  const int framesize = C->frame_size_in_bytes();
 
   // insert a nop at the start of the prolog so we can patch in a
   // branch if we need to invalidate the method later
@@ -1085,8 +1085,8 @@ void MachPrologNode::emit(CodeBuffer &cbuf, PhaseRegAlloc *ra_) const {
 
   assert_cond(C != NULL);
 
-  int bangsize = C->output()->bang_size_in_bytes();
-  if (C->output()->need_stack_bang(bangsize)) {
+  int bangsize = C->bang_size_in_bytes();
+  if (C->need_stack_bang(bangsize)) {
     __ generate_stack_overflow_check(bangsize);
   }
 
@@ -1096,12 +1096,12 @@ void MachPrologNode::emit(CodeBuffer &cbuf, PhaseRegAlloc *ra_) const {
     Unimplemented();
   }
 
-  C->output()->set_frame_complete(cbuf.insts_size());
+  C->set_frame_complete(cbuf.insts_size());
 
   if (C->has_mach_constant_base_node()) {
     // NOTE: We set the table base offset here because users might be
     // emitted before MachConstantBaseNode.
-    ConstantTable& constant_table = C->output()->constant_table();
+    Compile::ConstantTable& constant_table = C->constant_table();
     constant_table.set_table_base_offset(constant_table.calculate_table_base_offset());
   }
 }
@@ -1125,7 +1125,7 @@ void MachEpilogNode::format(PhaseRegAlloc *ra_, outputStream *st) const {
   assert_cond(st != NULL && ra_ != NULL);
   Compile* C = ra_->C;
   assert_cond(C != NULL);
-  int framesize = C->output()->frame_size_in_bytes();
+  int framesize = C->frame_size_in_bytes();
 
   st->print("# pop frame %d\n\t", framesize);
 
@@ -1152,7 +1152,7 @@ void MachEpilogNode::emit(CodeBuffer &cbuf, PhaseRegAlloc *ra_) const {
   Compile* C = ra_->C;
   MacroAssembler _masm(&cbuf);
   assert_cond(C != NULL);
-  int framesize = C->output()->frame_size_in_bytes();
+  int framesize = C->frame_size_in_bytes();
 
   __ remove_frame(framesize);
 
