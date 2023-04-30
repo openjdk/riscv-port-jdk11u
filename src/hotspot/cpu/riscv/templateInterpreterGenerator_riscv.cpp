@@ -1248,7 +1248,7 @@ address TemplateInterpreterGenerator::generate_native_entry(bool synchronized) {
   {
     Label no_reguard;
     __ lwu(t0, Address(xthread, in_bytes(JavaThread::stack_guard_state_offset())));
-    __ addi(t1, zr, (u1)StackOverflow::stack_guard_yellow_reserved_disabled);
+    __ addi(t1, zr, (u1)JavaThread::stack_guard_yellow_reserved_disabled);
     __ bne(t0, t1, no_reguard);
 
     __ pusha(); // only save smashed registers
