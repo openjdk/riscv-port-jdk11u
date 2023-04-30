@@ -3784,7 +3784,7 @@ address MacroAssembler::zero_words(Register ptr, Register cnt)
     if (StubRoutines::riscv::complete()) {
       address tpc = trampoline_call(zero_blocks);
       if (tpc == NULL) {
-        DEBUG_ONLY(reset_labels(around));
+        DEBUG_ONLY(reset_labels1(around));
         postcond(pc() == badAddress);
         return NULL;
       }
