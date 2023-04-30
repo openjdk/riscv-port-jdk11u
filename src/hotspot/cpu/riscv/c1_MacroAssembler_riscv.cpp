@@ -64,13 +64,6 @@ int C1_MacroAssembler::lock_object(Register hdr, Register obj, Register disp_hdr
 
   null_check_offset = offset();
 
-  if (DiagnoseSyncOnValueBasedClasses != 0) {
-    load_klass(hdr, obj);
-    lwu(hdr, Address(hdr, Klass::access_flags_offset()));
-    andi(t0, hdr, JVM_ACC_IS_VALUE_BASED_CLASS);
-    bnez(t0, slow_case, true /* is_far */);
-  }
-
   // Load object header
   ld(hdr, Address(obj, hdr_offset));
   // and mark it as unlocked
