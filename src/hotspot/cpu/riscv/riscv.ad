@@ -1407,7 +1407,7 @@ void MachUEPNode::format(PhaseRegAlloc* ra_, outputStream* st) const
   st->print_cr("# MachUEPNode");
   if (UseCompressedClassPointers) {
     st->print_cr("\tlwu t0, [j_rarg0, oopDesc::klass_offset_in_bytes()]\t# compressed klass");
-    if (CompressedKlassPointers::shift() != 0) {
+    if (Universe::narrow_klass_shift() != 0) {
       st->print_cr("\tdecode_klass_not_null t0, t0");
     }
   } else {
@@ -3255,7 +3255,7 @@ operand indOffL(iRegP reg, immLOffset off)
 
 operand indirectN(iRegN reg)
 %{
-  predicate(CompressedOops::shift() == 0);
+  predicate(Universe::narrow_oop_shift() == 0);
   constraint(ALLOC_IN_RC(ptr_reg));
   match(DecodeN reg);
   op_cost(0);
@@ -3270,7 +3270,7 @@ operand indirectN(iRegN reg)
 
 operand indOffIN(iRegN reg, immIOffset off)
 %{
-  predicate(CompressedOops::shift() == 0);
+  predicate(Universe::narrow_oop_shift() == 0);
   constraint(ALLOC_IN_RC(ptr_reg));
   match(AddP (DecodeN reg) off);
   op_cost(0);
@@ -3285,7 +3285,7 @@ operand indOffIN(iRegN reg, immIOffset off)
 
 operand indOffLN(iRegN reg, immLOffset off)
 %{
-  predicate(CompressedOops::shift() == 0);
+  predicate(Universe::narrow_oop_shift() == 0);
   constraint(ALLOC_IN_RC(ptr_reg));
   match(AddP (DecodeN reg) off);
   op_cost(0);
@@ -7947,7 +7947,7 @@ instruct convP2I(iRegINoSp dst, iRegP src) %{
 // in case of 32bit oops (heap < 4Gb).
 instruct convN2I(iRegINoSp dst, iRegN src)
 %{
-  predicate(CompressedOops::shift() == 0);
+  predicate(Universe::narrow_oop_shift() == 0);
   match(Set dst (ConvL2I (CastP2X (DecodeN src))));
 
   ins_cost(ALU_COST);
