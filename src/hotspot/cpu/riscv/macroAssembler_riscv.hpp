@@ -815,17 +815,13 @@ class MacroAssembler: public Assembler {
 private:
 
 #ifdef ASSERT
-  // Template short-hand support to clean-up after a failed call to trampoline
+  // Macro short-hand support to clean-up after a failed call to trampoline
   // call generation (see trampoline_call() below), when a set of Labels must
   // be reset (before returning).
-  template<typename Label, typename... More>
-  void reset_labels(Label& lbl, More&... more) {
-    lbl.reset(); reset_labels(more...);
-  }
-  template<typename Label>
-  void reset_labels(Label& lbl) {
-    lbl.reset();
-  }
+#define reset_labels1(L1) L1.reset()
+#define reset_labels2(L1, L2) L1.reset(); L2.reset()
+#define reset_labels3(L1, L2, L3) L1.reset(); reset_labels2(L2, L3)
+#define reset_labels5(L1, L2, L3, L4, L5) reset_labels2(L1, L2); reset_labels3(L3, L4, L5)
 #endif
   void repne_scan(Register addr, Register value, Register count, Register tmp);
 
