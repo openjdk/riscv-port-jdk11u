@@ -740,13 +740,6 @@ class HandlerImpl {
   }
 };
 
-class Node::PD {
-public:
-  enum NodeFlags {
-    _last_flag = Node::_last_flag
-  };
-};
-
 bool is_CAS(int opcode, bool maybe_volatile);
 
 // predicate controlling translation of CompareAndSwapX
@@ -803,17 +796,6 @@ void reg_mask_init() {
     _NO_SPECIAL_REG_mask.SUBTRACT(_FP_REG_mask);
     _NO_SPECIAL_PTR_REG_mask.SUBTRACT(_FP_REG_mask);
   }
-}
-
-void PhaseOutput::pd_perform_mach_node_analysis() {
-}
-
-int MachNode::pd_alignment_required() const {
-  return 1;
-}
-
-int MachNode::compute_padding(int current_offset) const {
-  return 0;
 }
 
 // is_CAS(int opcode, bool maybe_volatile)
