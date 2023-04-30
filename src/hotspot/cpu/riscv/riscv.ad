@@ -4324,7 +4324,6 @@ instruct loadRange(iRegINoSp dst, memory mem)
 instruct loadP(iRegPNoSp dst, memory mem)
 %{
   match(Set dst (LoadP mem));
-  predicate(n->as_Load()->barrier_data() == 0);
 
   ins_cost(LOAD_COST);
   format %{ "ld  $dst, $mem\t# ptr, #@loadP" %}
@@ -5060,8 +5059,6 @@ instruct compareAndSwapL(iRegINoSp res, indirect mem, iRegLNoSp oldval, iRegLNoS
 
 instruct compareAndSwapP(iRegINoSp res, indirect mem, iRegP oldval, iRegP newval)
 %{
-  predicate(n->as_LoadStore()->barrier_data() == 0);
-
   match(Set res (CompareAndSwapP mem (Binary oldval newval)));
 
   ins_cost(LOAD_COST + STORE_COST + ALU_COST * 6 + BRANCH_COST * 4);
@@ -5181,7 +5178,7 @@ instruct compareAndSwapLAcq(iRegINoSp res, indirect mem, iRegLNoSp oldval, iRegL
 
 instruct compareAndSwapPAcq(iRegINoSp res, indirect mem, iRegP oldval, iRegP newval)
 %{
-  predicate(needs_acquiring_load_reserved(n) && (n->as_LoadStore()->barrier_data() == 0));
+  predicate(needs_acquiring_load_reserved(n));
 
   match(Set res (CompareAndSwapP mem (Binary oldval newval)));
 
@@ -5327,7 +5324,6 @@ instruct compareAndExchangeN(iRegNNoSp res, indirect mem, iRegN oldval, iRegN ne
 
 instruct compareAndExchangeP(iRegPNoSp res, indirect mem, iRegP oldval, iRegP newval)
 %{
-  predicate(n->as_LoadStore()->barrier_data() == 0);
   match(Set res (CompareAndExchangeP mem (Binary oldval newval)));
 
   ins_cost(LOAD_COST + STORE_COST + BRANCH_COST * 3 + ALU_COST);
@@ -5462,7 +5458,7 @@ instruct compareAndExchangeNAcq(iRegNNoSp res, indirect mem, iRegN oldval, iRegN
 
 instruct compareAndExchangePAcq(iRegPNoSp res, indirect mem, iRegP oldval, iRegP newval)
 %{
-  predicate(needs_acquiring_load_reserved(n) && (n->as_LoadStore()->barrier_data() == 0));
+  predicate(needs_acquiring_load_reserved(n));
 
   match(Set res (CompareAndExchangeP mem (Binary oldval newval)));
 
@@ -5592,7 +5588,6 @@ instruct weakCompareAndSwapN(iRegINoSp res, indirect mem, iRegN oldval, iRegN ne
 
 instruct weakCompareAndSwapP(iRegINoSp res, indirect mem, iRegP oldval, iRegP newval)
 %{
-  predicate(n->as_LoadStore()->barrier_data() == 0);
   match(Set res (WeakCompareAndSwapP mem (Binary oldval newval)));
 
   ins_cost(LOAD_COST + STORE_COST + BRANCH_COST * 2 + ALU_COST * 2);
@@ -5731,7 +5726,7 @@ instruct weakCompareAndSwapNAcq(iRegINoSp res, indirect mem, iRegN oldval, iRegN
 
 instruct weakCompareAndSwapPAcq(iRegINoSp res, indirect mem, iRegP oldval, iRegP newval)
 %{
-  predicate(needs_acquiring_load_reserved(n) && (n->as_LoadStore()->barrier_data() == 0));
+  predicate(needs_acquiring_load_reserved(n));
 
   match(Set res (WeakCompareAndSwapP mem (Binary oldval newval)));
 
@@ -5798,7 +5793,6 @@ instruct get_and_setN(indirect mem, iRegN newv, iRegINoSp prev)
 
 instruct get_and_setP(indirect mem, iRegP newv, iRegPNoSp prev)
 %{
-  predicate(n->as_LoadStore()->barrier_data() == 0);
   match(Set prev (GetAndSetP mem newv));
 
   ins_cost(ALU_COST);
@@ -5865,7 +5859,7 @@ instruct get_and_setNAcq(indirect mem, iRegN newv, iRegINoSp prev)
 
 instruct get_and_setPAcq(indirect mem, iRegP newv, iRegPNoSp prev)
 %{
-  predicate(needs_acquiring_load_reserved(n) && (n->as_LoadStore()->barrier_data() == 0));
+  predicate(needs_acquiring_load_reserved(n));
 
   match(Set prev (GetAndSetP mem newv));
 
