@@ -33,10 +33,6 @@ const int StackAlignmentInBytes = 16;
 // 32-bit integer argument values are extended to 64 bits.
 const bool CCallingConventionRequiresIntsAsLongs = false;
 
-// RISCV has adopted a multicopy atomic model closely following
-// that of ARMv8.
-#define CPU_MULTI_COPY_ATOMIC
-
 // To be safe, we deoptimize when we come across an access that needs
 // patching. This is similar to what is done on aarch64.
 #define DEOPTIMIZE_WHEN_PATCHING
