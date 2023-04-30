@@ -1318,10 +1318,10 @@ int MacroAssembler::patch_oop(address insn_addr, address o) {
 void MacroAssembler::reinit_heapbase() {
   if (UseCompressedOops) {
     if (Universe::is_fully_initialized()) {
-      mv(xheapbase, CompressedOops::ptrs_base());
+      mv(xheapbase, Universe::narrow_ptrs_base());
     } else {
       int32_t offset = 0;
-      la_patchable(xheapbase, ExternalAddress((address)CompressedOops::ptrs_base_addr()), offset);
+      la_patchable(xheapbase, ExternalAddress((address)Universe::narrow_ptrs_base_addr()), offset);
       ld(xheapbase, Address(xheapbase, offset));
     }
   }
@@ -1596,8 +1596,8 @@ void MacroAssembler::orptr(Address adr, RegisterOrConstant src, Register tmp1, R
 void MacroAssembler::cmp_klass(Register oop, Register trial_klass, Register tmp, Label &L) {
   if (UseCompressedClassPointers) {
       lwu(tmp, Address(oop, oopDesc::klass_offset_in_bytes()));
-    if (CompressedKlassPointers::base() == NULL) {
-      slli(tmp, tmp, CompressedKlassPointers::shift());
+    if (Universe::narrow_klass_base() == NULL) {
+      slli(tmp, tmp, Universe::narrow_klass_shift());
       beq(trial_klass, tmp, L);
       return;
     }
@@ -1745,9 +1745,9 @@ void MacroAssembler::access_store_at(BasicType type, DecoratorSet decorators,
 // Algorithm must match CompressedOops::encode.
 void MacroAssembler::encode_heap_oop(Register d, Register s) {
   verify_oop(s, "broken oop in encode_heap_oop");
-  if (CompressedOops::base() == NULL) {
-    if (CompressedOops::shift() != 0) {
-      assert (LogMinObjAlignmentInBytes == CompressedOops::shift(), "decode alg wrong");
+  if (Universe::narrow_oop_base() == NULL) {
+    if (Universe::narrow_oop_shift() != 0) {
+      assert (LogMinObjAlignmentInBytes == Universe::narrow_oop_shift(), "decode alg wrong");
       srli(d, s, LogMinObjAlignmentInBytes);
     } else {
       mv(d, s);
@@ -1758,9 +1758,9 @@ void MacroAssembler::encode_heap_oop(Register d, Register s) {
     bgez(d, notNull);
     mv(d, zr);
     bind(notNull);
-    if (CompressedOops::shift() != 0) {
-      assert (LogMinObjAlignmentInBytes == CompressedOops::shift(), "decode alg wrong");
-      srli(d, d, CompressedOops::shift());
+    if (Universe::narrow_oop_shift() != 0) {
+      assert (LogMinObjAlignmentInBytes == Universe::narrow_oop_shift(), "decode alg wrong");
+      srli(d, d, Universe::narrow_oop_shift());
     }
   }
 }
@@ -1799,9 +1799,9 @@ void  MacroAssembler::decode_klass_not_null(Register r) {
 void MacroAssembler::decode_klass_not_null(Register dst, Register src, Register tmp) {
   assert(UseCompressedClassPointers, "should only be used for compressed headers");
 
-  if (CompressedKlassPointers::base() == NULL) {
-    if (CompressedKlassPointers::shift() != 0) {
-      assert(LogKlassAlignmentInBytes == CompressedKlassPointers::shift(), "decode alg wrong");
+  if (Universe::narrow_klass_base() == NULL) {
+    if (Universe::narrow_klass_shift() != 0) {
+      assert(LogKlassAlignmentInBytes == Universe::narrow_klass_shift(), "decode alg wrong");
       slli(dst, src, LogKlassAlignmentInBytes);
     } else {
       mv(dst, src);
@@ -1815,10 +1815,10 @@ void MacroAssembler::decode_klass_not_null(Register dst, Register src, Register 
   }
 
   assert_different_registers(src, xbase);
-  li(xbase, (uintptr_t)CompressedKlassPointers::base());
+  li(xbase, (uintptr_t)Universe::narrow_klass_base());
 
-  if (CompressedKlassPointers::shift() != 0) {
-    assert(LogKlassAlignmentInBytes == CompressedKlassPointers::shift(), "decode alg wrong");
+  if (Universe::narrow_klass_shift() != 0) {
+    assert(LogKlassAlignmentInBytes == Universe::narrow_klass_shift(), "decode alg wrong");
     assert_different_registers(t0, xbase);
     shadd(dst, src, xbase, t0, LogKlassAlignmentInBytes);
   } else {
@@ -1835,9 +1835,9 @@ void MacroAssembler::encode_klass_not_null(Register r) {
 void MacroAssembler::encode_klass_not_null(Register dst, Register src, Register tmp) {
   assert(UseCompressedClassPointers, "should only be used for compressed headers");
 
-  if (CompressedKlassPointers::base() == NULL) {
-    if (CompressedKlassPointers::shift() != 0) {
-      assert(LogKlassAlignmentInBytes == CompressedKlassPointers::shift(), "decode alg wrong");
+  if (Universe::narrow_klass_base() == NULL) {
+    if (Universe::narrow_klass_shift() != 0) {
+      assert(LogKlassAlignmentInBytes == Universe::narrow_klass_shift(), "decode alg wrong");
       srli(dst, src, LogKlassAlignmentInBytes);
     } else {
       mv(dst, src);
@@ -1845,8 +1845,8 @@ void MacroAssembler::encode_klass_not_null(Register dst, Register src, Register 
     return;
   }
 
-  if (((uint64_t)(uintptr_t)CompressedKlassPointers::base() & 0xffffffff) == 0 &&
-      CompressedKlassPointers::shift() == 0) {
+  if (((uint64_t)(uintptr_t)Universe::narrow_klass_base() & 0xffffffff) == 0 &&
+      Universe::narrow_klass_shift() == 0) {
     zero_extend(dst, src, 32);
     return;
   }
@@ -1857,10 +1857,10 @@ void MacroAssembler::encode_klass_not_null(Register dst, Register src, Register 
   }
 
   assert_different_registers(src, xbase);
-  li(xbase, (intptr_t)CompressedKlassPointers::base());
+  li(xbase, (intptr_t)Universe::narrow_klass_base());
   sub(dst, src, xbase);
-  if (CompressedKlassPointers::shift() != 0) {
-    assert(LogKlassAlignmentInBytes == CompressedKlassPointers::shift(), "decode alg wrong");
+  if (Universe::narrow_klass_shift() != 0) {
+    assert(LogKlassAlignmentInBytes == Universe::narrow_klass_shift(), "decode alg wrong");
     srli(dst, dst, LogKlassAlignmentInBytes);
   }
   if (xbase == xheapbase) {
@@ -1878,22 +1878,22 @@ void MacroAssembler::decode_heap_oop_not_null(Register dst, Register src) {
   // Cannot assert, unverified entry point counts instructions (see .ad file)
   // vtableStubs also counts instructions in pd_code_size_limit.
   // Also do not verify_oop as this is called by verify_oop.
-  if (CompressedOops::shift() != 0) {
-    assert(LogMinObjAlignmentInBytes == CompressedOops::shift(), "decode alg wrong");
+  if (Universe::narrow_oop_shift() != 0) {
+    assert(LogMinObjAlignmentInBytes == Universe::narrow_oop_shift(), "decode alg wrong");
     slli(dst, src, LogMinObjAlignmentInBytes);
-    if (CompressedOops::base() != NULL) {
+    if (Universe::narrow_oop_base() != NULL) {
       add(dst, xheapbase, dst);
     }
   } else {
-    assert(CompressedOops::base() == NULL, "sanity");
+    assert(Universe::narrow_oop_base() == NULL, "sanity");
     mv(dst, src);
   }
 }
 
 void  MacroAssembler::decode_heap_oop(Register d, Register s) {
-  if (CompressedOops::base() == NULL) {
-    if (CompressedOops::shift() != 0 || d != s) {
-      slli(d, s, CompressedOops::shift());
+  if (Universe::narrow_oop_base() == NULL) {
+    if (Universe::narrow_oop_shift() != 0 || d != s) {
+      slli(d, s, Universe::narrow_oop_shift());
     }
   } else {
     Label done;
@@ -3004,7 +3004,7 @@ void  MacroAssembler::set_narrow_klass(Register dst, Klass* k) {
   InstructionMark im(this);
   RelocationHolder rspec = metadata_Relocation::spec(index);
   code_section()->relocate(inst_mark(), rspec);
-  narrowKlass nk = CompressedKlassPointers::encode(k);
+  narrowKlass nk = Klass::encode_klass(k);
   li32(dst, nk);
   zero_extend(dst, dst, 32);
 }
