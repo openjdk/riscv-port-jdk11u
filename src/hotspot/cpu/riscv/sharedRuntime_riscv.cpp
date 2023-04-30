@@ -1252,7 +1252,7 @@ nmethod* SharedRuntime::generate_native_wrapper(MacroAssembler* masm,
   __ nop();
 
   // Generate stack overflow check
-  __ bang_stack_with_offset(checked_cast<int>(StackOverflow::stack_shadow_zone_size()));
+  __ bang_stack_with_offset((int)JavaThread::stack_shadow_zone_size());
 
   // Generate a new frame for the wrapper.
   __ enter();
@@ -1551,7 +1551,7 @@ nmethod* SharedRuntime::generate_native_wrapper(MacroAssembler* masm,
   Label reguard;
   Label reguard_done;
   __ lbu(t0, Address(xthread, JavaThread::stack_guard_state_offset()));
-  __ mv(t1, StackOverflow::stack_guard_yellow_reserved_disabled);
+  __ mv(t1, JavaThread::stack_guard_yellow_reserved_disabled);
   __ beq(t0, t1, reguard);
   __ bind(reguard_done);
 
