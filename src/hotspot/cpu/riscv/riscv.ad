@@ -1475,14 +1475,6 @@ const bool Matcher::match_rule_supported(int opcode) {
   }
 
   switch (opcode) {
-    case Op_CacheWB:           // fall through
-    case Op_CacheWBPreSync:    // fall through
-    case Op_CacheWBPostSync:
-      if (!VM_Version::supports_data_cache_line_flush()) {
-        return false;
-      }
-      break;
-
     case Op_PopCountI:
     case Op_PopCountL:
       return UsePopCountInstruction;
