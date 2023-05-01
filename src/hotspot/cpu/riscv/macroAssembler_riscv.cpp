@@ -2716,7 +2716,6 @@ void MacroAssembler::build_frame(int framesize) {
   sd(fp, Address(sp, framesize - 2 * wordSize));
   sd(ra, Address(sp, framesize - wordSize));
   if (PreserveFramePointer) { add(fp, sp, framesize); }
-  verify_cross_modify_fence_not_required();
 }
 
 void MacroAssembler::remove_frame(int framesize) {
@@ -3935,26 +3934,5 @@ void MacroAssembler::cmp_l2i(Register dst, Register src1, Register src2, Registe
 
 void MacroAssembler::safepoint_ifence() {
   ifence();
-#ifndef PRODUCT
-  if (VerifyCrossModifyFence) {
-    // Clear the thread state.
-    sb(zr, Address(xthread, in_bytes(JavaThread::requires_cross_modify_fence_offset())));
-  }
-#endif
 }
 
-#ifndef PRODUCT
-void MacroAssembler::verify_cross_modify_fence_not_required() {
-  if (VerifyCrossModifyFence) {
-    // Check if thread needs a cross modify fence.
-    lbu(t0, Address(xthread, in_bytes(JavaThread::requires_cross_modify_fence_offset())));
-    Label fence_not_required;
-    beqz(t0, fence_not_required);
-    // If it does then fail.
-    la(t0, RuntimeAddress(CAST_FROM_FN_PTR(address, JavaThread::verify_cross_modify_fence_failure)));
-    mv(c_rarg0, xthread);
-    jalr(t0);
-    bind(fence_not_required);
-  }
-}
-#endif
