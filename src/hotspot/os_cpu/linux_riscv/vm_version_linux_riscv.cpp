@@ -83,14 +83,14 @@ void VM_Version::get_os_cpu_info() {
 
   uint64_t auxv = getauxval(AT_HWCAP);
 
-  static_assert(CPU_I == HWCAP_ISA_I, "Flag CPU_I must follow Linux HWCAP");
-  static_assert(CPU_M == HWCAP_ISA_M, "Flag CPU_M must follow Linux HWCAP");
-  static_assert(CPU_A == HWCAP_ISA_A, "Flag CPU_A must follow Linux HWCAP");
-  static_assert(CPU_F == HWCAP_ISA_F, "Flag CPU_F must follow Linux HWCAP");
-  static_assert(CPU_D == HWCAP_ISA_D, "Flag CPU_D must follow Linux HWCAP");
-  static_assert(CPU_C == HWCAP_ISA_C, "Flag CPU_C must follow Linux HWCAP");
-  static_assert(CPU_V == HWCAP_ISA_V, "Flag CPU_V must follow Linux HWCAP");
-  static_assert(CPU_B == HWCAP_ISA_B, "Flag CPU_B must follow Linux HWCAP");
+  STATIC_ASSERT(CPU_I == HWCAP_ISA_I);
+  STATIC_ASSERT(CPU_M == HWCAP_ISA_M);
+  STATIC_ASSERT(CPU_A == HWCAP_ISA_A);
+  STATIC_ASSERT(CPU_F == HWCAP_ISA_F);
+  STATIC_ASSERT(CPU_D == HWCAP_ISA_D);
+  STATIC_ASSERT(CPU_C == HWCAP_ISA_C);
+  STATIC_ASSERT(CPU_V == HWCAP_ISA_V);
+  STATIC_ASSERT(CPU_B == HWCAP_ISA_B);
   _features = auxv & (
       HWCAP_ISA_I |
       HWCAP_ISA_M |
