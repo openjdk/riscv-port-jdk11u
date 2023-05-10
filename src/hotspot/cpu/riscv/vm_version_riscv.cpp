@@ -139,6 +139,8 @@ void VM_Version::initialize() {
 #endif // COMPILER2
 
   UNSUPPORTED_OPTION(CriticalJNINatives);
+
+  FLAG_SET_DEFAULT(UseMembar, true);
 }
 
 #ifdef COMPILER2
