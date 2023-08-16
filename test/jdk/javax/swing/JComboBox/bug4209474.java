@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1999, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -21,29 +21,33 @@
  * questions.
  */
 
-/*
- * @test
- * @bug 4638015 8248001
- * @summary Determine if Hrefs are processed properly when they
- * appear in doc comments.
- * @author jamieh
- * @library ../lib
- * @modules jdk.javadoc/jdk.javadoc.internal.tool
- * @build JavadocTester
- * @run main TestHrefInDocComment
- */
+/* @test
+   @bug 4209474
+   @summary setSelectedItem(int) should only fire events if selection changed - avoid recursive calls
+*/
 
-public class TestHrefInDocComment extends JavadocTester {
+import javax.swing.JComboBox;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 
-    public static void main(String... args) throws Exception {
-        TestHrefInDocComment tester = new TestHrefInDocComment();
-        tester.runTests();
-    }
+public class bug4209474 {
 
-    @Test
-    void test() {
-        javadoc("-d", "out",
-                "-sourcepath", testSrc, "pkg");
-        checkExit(Exit.OK);
+    public static void main(String[] args) {
+
+        JComboBox comboBox = new JComboBox(
+            new Object[] {
+                        "Coma Berenices",
+                        "Triangulum",
+                        "Camelopardis",
+                        "Cassiopea"});
+
+        ActionListener listener = new ActionListener() {
+            public void actionPerformed(ActionEvent e) {
+                comboBox.setSelectedIndex(0);
+            }
+        };
+
+        comboBox.addActionListener(listener);
+        comboBox.setSelectedIndex(0);
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1999, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,28 +22,25 @@
  */
 
 /*
- * @test
- * @bug 4638015 8248001
- * @summary Determine if Hrefs are processed properly when they
- * appear in doc comments.
- * @author jamieh
- * @library ../lib
- * @modules jdk.javadoc/jdk.javadoc.internal.tool
- * @build JavadocTester
- * @run main TestHrefInDocComment
- */
+   @test
+   @bug 4234119
+   @summary Tests if adding items to ComboBox is slow
+*/
 
-public class TestHrefInDocComment extends JavadocTester {
+import javax.swing.JComboBox;
 
-    public static void main(String... args) throws Exception {
-        TestHrefInDocComment tester = new TestHrefInDocComment();
-        tester.runTests();
-    }
+public class bug4234119 {
 
-    @Test
-    void test() {
-        javadoc("-d", "out",
-                "-sourcepath", testSrc, "pkg");
-        checkExit(Exit.OK);
+    public static void main(String args[]) {
+        JComboBox jComboBox1 = new JComboBox();
+        long startTime = System.currentTimeMillis();
+        for (int i = 0 ; i < 500; i++) {
+            jComboBox1.addItem(Integer.valueOf(i));
+        }
+        long deltaTime = System.currentTimeMillis() - startTime;
+        if (deltaTime > 20000) {
+            throw new Error("Test failed: adding items to ComboBox is SLOW! (it took " + deltaTime + " ms");
+        }
+        System.out.println("Elapsed time: " + deltaTime);
     }
 }
