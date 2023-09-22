@@ -1343,6 +1343,12 @@ void MacroAssembler::mv(Register Rd, Address dest) {
   movptr(Rd, dest.target());
 }
 
+void MacroAssembler::mv(Register Rd, address addr) {
+  // Here in case of use with relocation, use fix length instruction
+  // movptr instead of li
+  movptr(Rd, addr);
+}
+
 void MacroAssembler::mv(Register Rd, RegisterOrConstant src) {
   if (src.is_register()) {
     mv(Rd, src.as_register());

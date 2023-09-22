@@ -540,8 +540,6 @@ class MacroAssembler: public Assembler {
   }
 
   // mv
-  void mv(Register Rd, address addr)                    { li(Rd, (int64_t)addr);  }
-
   inline void mv(Register Rd, int imm64)                { li(Rd, (int64_t)imm64); }
   inline void mv(Register Rd, long imm64)               { li(Rd, (int64_t)imm64); }
   inline void mv(Register Rd, long long imm64)          { li(Rd, (int64_t)imm64); }
@@ -552,6 +550,7 @@ class MacroAssembler: public Assembler {
   inline void mvw(Register Rd, int32_t imm32) { mv(Rd, imm32); }
 
   void mv(Register Rd, Address dest);
+  void mv(Register Rd, address dest);
   void mv(Register Rd, RegisterOrConstant src);
 
   // logic
