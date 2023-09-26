@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2003, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,35 +22,25 @@
  */
 
 /*
- * @test
- * @bug 6587786
- * @summary Javap throws error : "ERROR:Could not find <classname>" for JRE classes
- * @modules jdk.jdeps/com.sun.tools.javap
- */
+  @test
+  @bug 4257143
+  @summary RFE: Cannot set some AWT properties until peer has been created
+  @key headful
+*/
 
-import java.io.*;
+import java.awt.EventQueue;
+import java.awt.TextArea;
+import java.awt.TextField;
 
-public class T6587786 {
+public class PeerlessSetCaret {
     public static void main(String[] args) throws Exception {
-        new T6587786().run();
-    }
+        EventQueue.invokeAndWait(() -> {
+            TextField tf = new TextField("Hello, World!");
+            TextArea ta = new TextArea("Hello, World!");
 
-    public void run() throws IOException {
-        javap("jdk.javadoc.doclet.Doclet", "java.util.List");
-        javap("java.util.List", "jdk.javadoc.doclet.StandardDoclet");
-    }
-
-    void javap(String... args) {
-        StringWriter sw = new StringWriter();
-        PrintWriter out = new PrintWriter(sw);
-        //sun.tools.javap.Main.entry(args);
-        try {
-            int rc = com.sun.tools.javap.Main.run(args, out);
-            if (rc != 0)
-                throw new Error("javap failed. rc=" + rc);
-        } finally {
-            out.close();
-            System.out.println(sw.toString());
-        }
+            // without the fix these will throw IllegalComponentStateException
+            tf.setCaretPosition(1);
+            ta.setCaretPosition(1);
+        });
     }
 }
