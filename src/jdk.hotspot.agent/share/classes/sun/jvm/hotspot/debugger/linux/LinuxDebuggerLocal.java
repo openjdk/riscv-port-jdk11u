@@ -173,7 +173,7 @@ public class LinuxDebuggerLocal extends DebuggerBase implements LinuxDebugger {
                 } catch (InterruptedException x) {}
              }
              if (lastException != null) {
-                throw new DebuggerException(lastException.getMessage(), lastException);
+                throw new DebuggerException(lastException);
              } else {
                 return task;
              }
