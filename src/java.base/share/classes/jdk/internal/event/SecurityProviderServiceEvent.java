@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,41 +23,23 @@
  * questions.
  */
 
-package java.security.cert;
-
-import java.util.Date;
-
-import sun.security.provider.certpath.CertPathHelper;
+package jdk.internal.event;
 
 /**
- * Helper class that allows the Sun CertPath provider to access
- * implementation dependent APIs in CertPath framework.
- *
- * @author Andreas Sterbenz
+ * Event recording details of Provider.getService(String type, String algorithm) calls
  */
-class CertPathHelperImpl extends CertPathHelper {
 
-    private CertPathHelperImpl() {
-        // empty
-    }
+public final class SecurityProviderServiceEvent extends Event {
+    private final static SecurityProviderServiceEvent EVENT = new SecurityProviderServiceEvent();
 
     /**
-     * Initialize the helper framework. This method must be called from
-     * the static initializer of each class that is the target of one of
-     * the methods in this class. This ensures that the helper is initialized
-     * prior to a tunneled call from the Sun provider.
+     * Returns {@code true} if event is enabled, {@code false} otherwise.
      */
-    static synchronized void initialize() {
-        if (CertPathHelper.instance == null) {
-            CertPathHelper.instance = new CertPathHelperImpl();
-        }
+    public static boolean isTurnedOn() {
+        return EVENT.isEnabled();
     }
 
-    protected void implSetDateAndTime(X509CRLSelector sel, Date date, long skew) {
-        sel.setDateAndTime(date, skew);
-    }
-
-    protected boolean implIsJdkCA(TrustAnchor anchor) {
-        return anchor.isJdkCA();
-    }
+    public String type;
+    public String algorithm;
+    public String provider;
 }
