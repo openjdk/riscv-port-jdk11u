@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1999, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2001, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -21,20 +21,27 @@
  * questions.
  */
 
-package nsk.stress.except;
+/*
+  @test
+  @bug 4458016
+  @summary KeyboardFocusManager.get[Property|Vetoable]ChangeListeners throw NPE
+  @key headful
+  @run main PropertySupportNPETest
+*/
 
-/**
- * This class throws exception while static initialization.
- * The test should load this class via reflection in order
- * to hold the exception until runtime.
- *
- * @see nsk.stress.except.except011
- */
-public class except011oops {
-    static boolean truth = true;
+import java.awt.BorderLayout;
+import java.awt.EventQueue;
+import java.awt.KeyboardFocusManager;
 
-    static {
-        if (truth)
-            throw new RuntimeException("except011oops");
-    }
-}
+public class PropertySupportNPETest {
+     public static void main(String[] args) throws Exception {
+         EventQueue.invokeAndWait(() -> {
+             KeyboardFocusManager kfm =
+                     KeyboardFocusManager.getCurrentKeyboardFocusManager();
+             kfm.getVetoableChangeListeners();
+             kfm.getVetoableChangeListeners("");
+             kfm.getPropertyChangeListeners();
+             kfm.getPropertyChangeListeners("");
+         });
+     }
+ }
