@@ -85,7 +85,7 @@ jobs:
 
     steps:
       - name: 'Checkout the JDK source'
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: 'Get the BootJDK'
         id: bootjdk
@@ -130,8 +130,9 @@ jobs:
           sudo debootstrap
           --arch=${{ matrix.debian-arch }}
           --verbose
-          --include=fakeroot,symlinks,build-essential,libx11-dev,libxext-dev,libxrender-dev,libxrandr-dev,libxtst-dev,libxt-dev,libcups2-dev,libfontconfig1-dev,libasound2-dev,libfreetype6-dev,libpng-dev
+          --include=fakeroot,symlinks,build-essential,libx11-dev,libxext-dev,libxrender-dev,libxrandr-dev,libxtst-dev,libxt-dev,libcups2-dev,libfontconfig1-dev,libasound2-dev,libfreetype-dev,libpng-dev
           --resolve-deps
+          --variant=minbase
           ${{ matrix.debian-version }}
           sysroot
           ${{ matrix.debian-repository }}
