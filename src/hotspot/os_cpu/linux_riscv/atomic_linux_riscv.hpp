@@ -69,9 +69,9 @@ struct Atomic::PlatformAdd
 #ifndef FULL_COMPILER_ATOMIC_SUPPORT
 template<>
 template<typename T>
-inline T Atomic::PlatformCmpxchg<1>::operator()(T volatile* dest __attribute__((unused)),
+inline T Atomic::PlatformCmpxchg<1>::operator()(T exchange_value,
+                                                T volatile* dest __attribute__((unused)),
                                                 T compare_value,
-                                                T exchange_value,
                                                 atomic_memory_order order) const {
   STATIC_ASSERT(1 == sizeof(T));
 
@@ -185,4 +185,5 @@ inline T Atomic::PlatformCmpxchg<4>::operator()(T exchange_value,
   return rv;
 }
 
+#undef FULL_COMPILER_ATOMIC_SUPPORT
 #endif // OS_CPU_LINUX_RISCV_ATOMIC_LINUX_RISCV_HPP
