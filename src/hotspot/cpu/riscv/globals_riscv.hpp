@@ -104,7 +104,8 @@ define_pd_global(intx, InlineSmallCode,          1000);
   product(bool, AvoidUnalignedAccesses, true,                                    \
           "Avoid generating unaligned memory accesses")                          \
   experimental(bool, UseRVV, false, "Use RVV instructions")                      \
-  experimental(bool, UseRVB, false, "Use RVB instructions")                      \
+  experimental(bool, UseZba, false, "Use Zba instructions")                      \
+  experimental(bool, UseZbb, false, "Use Zbb instructions")                      \
   experimental(bool, UseRVC, false, "Use RVC instructions")
 
 #endif // CPU_RISCV_GLOBALS_RISCV_HPP
