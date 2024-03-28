@@ -26,6 +26,7 @@
 #ifndef OS_LINUX_RISCV_FLUSH_ICACHE_LINUX_HPP
 #define OS_LINUX_RISCV_FLUSH_ICACHE_LINUX_HPP
 
+#include "memory/allocation.hpp"
 #include "runtime/vm_version.hpp"
 #include "utilities/growableArray.hpp"
 
