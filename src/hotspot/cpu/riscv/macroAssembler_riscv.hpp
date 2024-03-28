@@ -71,9 +71,6 @@ class MacroAssembler: public Assembler {
     atomic_incw(tmp1, tmp2);
   }
 
-  // Place a fence.i after code may have been modified due to a safepoint.
-  void safepoint_ifence();
-
   // Alignment
   void align(int modulus, int extra_offset = 0);
 

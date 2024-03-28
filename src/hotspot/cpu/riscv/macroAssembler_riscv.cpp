@@ -574,7 +574,6 @@ void MacroAssembler::emit_static_call_stub() {
   // CompiledDirectStaticCall::set_to_interpreted knows the
   // exact layout of this stub.
 
-  ifence();
   mov_metadata(xmethod, (Metadata*)NULL);
 
   // Jump to the entry point of the i2c stub.
@@ -4135,10 +4134,6 @@ void MacroAssembler::cmp_l2i(Register dst, Register src1, Register src2, Registe
   // dst = -1 if lt; else if eq , dst = 0
   neg(dst, dst);
   bind(done);
-}
-
-void MacroAssembler::safepoint_ifence() {
-  ifence();
 }
 
 #ifdef COMPILER2
