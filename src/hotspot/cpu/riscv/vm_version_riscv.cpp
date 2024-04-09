@@ -41,7 +41,9 @@ void VM_Version::initialize() {
 
   // check if satp.mode is supported, currently supports up to SV48(RV64)
   if (get_satp_mode() > VM_SV48) {
-    vm_exit_during_initialization(err_msg("Unsupported satp mode: %s", _vm_mode));
+    vm_exit_during_initialization(
+      err_msg("Unsupported satp mode: %s. Only satp modes up to sv48 are supported for now.",
+              _vm_mode));
   }
 
   if (FLAG_IS_DEFAULT(UseFMA)) {
