@@ -105,6 +105,7 @@ define_pd_global(intx, InlineSmallCode,          1000);
   experimental(bool, UseRVV, false, "Use RVV instructions")                      \
   experimental(bool, UseZba, false, "Use Zba instructions")                      \
   experimental(bool, UseZbb, false, "Use Zbb instructions")                      \
+  experimental(bool, UseZbs, false, "Use Zbs instructions")                      \
   experimental(bool, UseRVC, false, "Use RVC instructions")
 
 #endif // CPU_RISCV_GLOBALS_RISCV_HPP
