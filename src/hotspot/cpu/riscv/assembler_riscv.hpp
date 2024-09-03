@@ -314,7 +314,6 @@ public:
 
   void _li(Register Rd, int64_t imm);  // optimized load immediate
   void li32(Register Rd, int32_t imm);
-  void li64(Register Rd, int64_t imm);
   void movptr(Register Rd, address addr);
   void movptr_with_offset(Register Rd, address addr, int32_t &offset);
   void movptr(Register Rd, uintptr_t imm64);
