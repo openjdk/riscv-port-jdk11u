@@ -116,33 +116,6 @@ void Assembler::_li(Register Rd, int64_t imm) {
   }
 }
 
-void Assembler::li64(Register Rd, int64_t imm) {
-   // Load upper 32 bits. upper = imm[63:32], but if imm[31] == 1 or
-   // (imm[31:28] == 0x7ff && imm[19] == 1), upper = imm[63:32] + 1.
-   int64_t lower = imm & 0xffffffff;
-   lower -= ((lower << 44) >> 44);
-   int64_t tmp_imm = ((uint64_t)(imm & 0xffffffff00000000)) + (uint64_t)lower;
-   int32_t upper = (tmp_imm - (int32_t)lower) >> 32;
-
-   // Load upper 32 bits
-   int64_t up = upper, lo = upper;
-   lo = (lo << 52) >> 52;
-   up -= lo;
-   up = (int32_t)up;
-   lui(Rd, up);
-   addi(Rd, Rd, lo);
-
-   // Load the rest 32 bits.
-   slli(Rd, Rd, 12);
-   addi(Rd, Rd, (int32_t)lower >> 20);
-   slli(Rd, Rd, 12);
-   lower = ((int32_t)imm << 12) >> 20;
-   addi(Rd, Rd, lower);
-   slli(Rd, Rd, 8);
-   lower = imm & 0xff;
-   addi(Rd, Rd, lower);
-}
-
 void Assembler::li32(Register Rd, int32_t imm) {
   // int32_t is in range 0x8000 0000 ~ 0x7fff ffff, and imm[31] is the sign bit
   int64_t upper = imm, lower = imm;
@@ -151,7 +124,6 @@ void Assembler::li32(Register Rd, int32_t imm) {
   upper = (int32_t)upper;
   // lui Rd, imm[31:12] + imm[11]
   lui(Rd, upper);
-  // use addiw to distinguish li32 to li64
   addiw(Rd, Rd, lower);
 }
 
