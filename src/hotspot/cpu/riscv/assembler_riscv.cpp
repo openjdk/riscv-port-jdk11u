@@ -50,7 +50,7 @@ void Assembler::add(Register Rd, Register Rn, int64_t increment, Register temp) 
   }
 }
 
-void Assembler::addw(Register Rd, Register Rn, int64_t increment, Register temp) {
+void Assembler::addw(Register Rd, Register Rn, int32_t increment, Register temp) {
   if (is_imm_in_range(increment, 12, 0)) {
     addiw(Rd, Rn, increment);
   } else {
@@ -70,7 +70,7 @@ void Assembler::sub(Register Rd, Register Rn, int64_t decrement, Register temp) 
   }
 }
 
-void Assembler::subw(Register Rd, Register Rn, int64_t decrement, Register temp) {
+void Assembler::subw(Register Rd, Register Rn, int32_t decrement, Register temp) {
   if (is_imm_in_range(-decrement, 12, 0)) {
     addiw(Rd, Rn, -decrement);
   } else {
