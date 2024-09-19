@@ -74,15 +74,12 @@ static inline Address aaddress(int n) {
   return iaddress(n);
 }
 
-static inline Address iaddress(Register r,  Register temp, InterpreterMacroAssembler* _masm) {
-  assert_cond(_masm != NULL);
+static inline Address iaddress(Register r, Register temp, InterpreterMacroAssembler* _masm) {
   _masm->shadd(temp, r, xlocals, temp, 3);
   return Address(temp, 0);
 }
 
-static inline Address laddress(Register r, Register temp,
-                               InterpreterMacroAssembler* _masm) {
-  assert_cond(_masm != NULL);
+static inline Address laddress(Register r, Register temp, InterpreterMacroAssembler* _masm) {
   _masm->shadd(temp, r, xlocals, temp, 3);
   return Address(temp, Interpreter::local_offset_in_bytes(1));;
 }
@@ -91,8 +88,7 @@ static inline Address faddress(Register r, Register temp, InterpreterMacroAssemb
   return iaddress(r, temp, _masm);
 }
 
-static inline Address daddress(Register r, Register temp,
-                               InterpreterMacroAssembler* _masm) {
+static inline Address daddress(Register r, Register temp, InterpreterMacroAssembler* _masm) {
   return laddress(r, temp, _masm);
 }
 
@@ -138,7 +134,6 @@ static void do_oop_store(InterpreterMacroAssembler* _masm,
                          Register val,
                          DecoratorSet decorators) {
   assert(val == noreg || val == x10, "parameter is just for looks");
-  assert_cond(_masm != NULL);
   __ store_heap_oop(dst, val, x29, x11, decorators);
 }
 
@@ -146,7 +141,6 @@ static void do_oop_load(InterpreterMacroAssembler* _masm,
                         Address src,
                         Register dst,
                         DecoratorSet decorators) {
-  assert_cond(_masm != NULL);
   __ load_heap_oop(dst, src, x7, x11, decorators);
 }
 
