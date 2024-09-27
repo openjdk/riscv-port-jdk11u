@@ -354,13 +354,13 @@ class StubGenerator: public StubCodeGenerator {
     __ ld(j_rarg2, result);
     Label is_long, is_float, is_double, exit;
     __ ld(j_rarg1, result_type);
-    __ li(t0, (u1)T_OBJECT);
+    __ mv(t0, (u1)T_OBJECT);
     __ beq(j_rarg1, t0, is_long);
-    __ li(t0, (u1)T_LONG);
+    __ mv(t0, (u1)T_LONG);
     __ beq(j_rarg1, t0, is_long);
-    __ li(t0, (u1)T_FLOAT);
+    __ mv(t0, (u1)T_FLOAT);
     __ beq(j_rarg1, t0, is_float);
-    __ li(t0, (u1)T_DOUBLE);
+    __ mv(t0, (u1)T_DOUBLE);
     __ beq(j_rarg1, t0, is_double);
 
     // handle T_INT case
@@ -742,7 +742,7 @@ class StubGenerator: public StubCodeGenerator {
     {
       Label L;
 
-      __ li(t0, 8);
+      __ mv(t0, 8);
       __ bge(count, t0, L);
       __ stop("genrate_copy_longs called with < 8 words");
       __ bind(L);
@@ -1943,7 +1943,7 @@ class StubGenerator: public StubCodeGenerator {
     }
 
   __ BIND(L_failed);
-    __ li(x10, -1);
+    __ mv(x10, -1);
     __ leave();   // required for proper stackwalking of RuntimeStub frame
     __ ret();
 
@@ -3131,7 +3131,7 @@ class StubGenerator: public StubCodeGenerator {
           ld(Rm, Address(Rm));
           add(Rn, Pn_base, Rn);
           ld(Rn, Address(Rn));
-          li(t0, 1); // set carry flag, i.e. no borrow
+          mv(t0, 1); // set carry flag, i.e. no borrow
           align(16);
           bind(loop); {
             notr(Rn, Rn);
@@ -3296,7 +3296,7 @@ class StubGenerator: public StubCodeGenerator {
       enter();
 
       // Make room.
-      li(Ra, 512);
+      mv(Ra, 512);
       bgt(Rlen, Ra, argh);
       slli(Ra, Rlen, exact_log2(4 * sizeof(jint)));
       sub(Ra, sp, Ra);
@@ -3322,7 +3322,7 @@ class StubGenerator: public StubCodeGenerator {
       {
         ld(Rn, Address(Pn_base));
         mul(Rlo_mn, Rn, inv);
-        li(t0, -1);
+        mv(t0, -1);
         Label ok;
         beq(Rlo_mn, t0, ok);
         stop("broken inverse in Montgomery multiply");
@@ -3418,7 +3418,7 @@ class StubGenerator: public StubCodeGenerator {
       enter();
 
       // Make room.
-      li(Ra, 512);
+      mv(Ra, 512);
       bgt(Rlen, Ra, argh);
       slli(Ra, Rlen, exact_log2(4 * sizeof(jint)));
       sub(Ra, sp, Ra);

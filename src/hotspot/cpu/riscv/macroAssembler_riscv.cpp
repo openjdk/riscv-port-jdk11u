@@ -755,7 +755,7 @@ void MacroAssembler::la(Register Rd, const Address &adr) {
   switch (adr.getMode()) {
     case Address::literal: {
       if (rtype == relocInfo::none) {
-        li(Rd, (intptr_t)(adr.target()));
+        mv(Rd, (intptr_t)(adr.target()));
       } else {
         movptr(Rd, adr.target());
       }
@@ -1538,7 +1538,7 @@ void MacroAssembler::andi(Register Rd, Register Rn, int64_t imm, Register tmp) {
     and_imm12(Rd, Rn, imm);
   } else {
     assert_different_registers(Rn, tmp);
-    li(tmp, imm);
+    mv(tmp, imm);
     andr(Rd, Rn, tmp);
   }
 }
@@ -1552,7 +1552,7 @@ void MacroAssembler::orptr(Address adr, RegisterOrConstant src, Register tmp1, R
       ori(tmp1, tmp1, src.as_constant());
     } else {
       assert_different_registers(tmp1, tmp2);
-      li(tmp2, src.as_constant());
+      mv(tmp2, src.as_constant());
       orr(tmp1, tmp1, tmp2);
     }
   }
@@ -1779,7 +1779,7 @@ void MacroAssembler::decode_klass_not_null(Register dst, Register src, Register 
   }
 
   assert_different_registers(src, xbase);
-  li(xbase, (uintptr_t)Universe::narrow_klass_base());
+  mv(xbase, (uintptr_t)Universe::narrow_klass_base());
 
   if (Universe::narrow_klass_shift() != 0) {
     assert(LogKlassAlignmentInBytes == Universe::narrow_klass_shift(), "decode alg wrong");
@@ -1821,7 +1821,7 @@ void MacroAssembler::encode_klass_not_null(Register dst, Register src, Register 
   }
 
   assert_different_registers(src, xbase);
-  li(xbase, (intptr_t)Universe::narrow_klass_base());
+  mv(xbase, (intptr_t)Universe::narrow_klass_base());
   sub(dst, src, xbase);
   if (Universe::narrow_klass_shift() != 0) {
     assert(LogKlassAlignmentInBytes == Universe::narrow_klass_shift(), "decode alg wrong");
@@ -1974,7 +1974,7 @@ void MacroAssembler::lookup_interface_method(Register recv_klass,
     if (itable_index.is_register()) {
       slli(t0, itable_index.as_register(), 3);
     } else {
-      li(t0, itable_index.as_constant() << 3);
+      mv(t0, itable_index.as_constant() << 3);
     }
     add(recv_klass, recv_klass, t0);
     if (itentry_off) {
@@ -2165,10 +2165,10 @@ void MacroAssembler::cmpxchg_narrow_value_helper(Register addr, Register expecte
   andi(aligned_addr, addr, ~3);
 
   if (size == int8) {
-    addi(mask, zr, 0xff);
+    mv(mask, 0xff);
   } else {
     // size == int16 case
-    addi(mask, zr, -1);
+    mv(mask, -1);
     zero_extend(mask, mask, 16);
   }
   sll(mask, mask, shift);
@@ -2208,7 +2208,7 @@ void MacroAssembler::cmpxchg_narrow_value(Register addr, Register expected,
   bnez(tmp, retry);
 
   if (result_as_bool) {
-    li(result, 1);
+    mv(result, 1);
     j(done);
 
     bind(fail);
@@ -2255,7 +2255,7 @@ void MacroAssembler::weak_cmpxchg_narrow_value(Register addr, Register expected,
   bnez(tmp, fail);
 
   // Success
-  li(result, 1);
+  mv(result, 1);
   j(done);
 
   // Fail
@@ -2281,7 +2281,7 @@ void MacroAssembler::cmpxchg(Register addr, Register expected,
 
   // equal, succeed
   if (result_as_bool) {
-    li(result, 1);
+    mv(result, 1);
   } else {
     mv(result, expected);
   }
@@ -2310,7 +2310,7 @@ void MacroAssembler::cmpxchg_weak(Register addr, Register expected,
   bnez(t0, fail);
 
   // Success
-  li(result, 1);
+  mv(result, 1);
   j(done);
 
   // Fail
@@ -2558,7 +2558,7 @@ void MacroAssembler::check_klass_subtype_slow_path(Register sub_klass,
   add(x15, x15, Array<Klass*>::base_offset_in_bytes());
 
   // Set t0 to an obvious invalid value, falling through by default
-  li(t0, -1);
+  mv(t0, -1);
   // Scan X12 words at [X15] for an occurrence of X10.
   repne_scan(x15, x10, x12, t0);
 
@@ -2629,7 +2629,7 @@ void MacroAssembler::get_thread(Register thread) {
 void MacroAssembler::load_byte_map_base(Register reg) {
   jbyte *byte_map_base =
     ((CardTableBarrierSet*)(BarrierSet::barrier_set()))->card_table()->byte_map_base();
-  li(reg, (uint64_t)byte_map_base);
+  mv(reg, (uint64_t)byte_map_base);
 }
 
 void MacroAssembler::la_patchable(Register reg1, const Address &dest, int32_t &offset) {
@@ -3206,7 +3206,7 @@ void MacroAssembler::mul_add(Register out, Register in, Register offset,
   add(in, in, t0);
 
   const int unroll = 8;
-  li(tmp, unroll);
+  mv(tmp, unroll);
   blt(len, tmp, L_tail_loop);
   bind(L_unroll);
   for (int i = 0; i < unroll; i++) {
@@ -3696,7 +3696,7 @@ void MacroAssembler::ctzc_bit(Register Rd, Register Rs, bool isLL, Register tmp1
   assert_different_registers(Rd, Rs, tmp1, tmp2);
   Label Loop;
   int step = isLL ? 8 : 16;
-  li(Rd, -step);
+  mv(Rd, -step);
   mv(tmp2, Rs);
 
   bind(Loop);
@@ -3713,7 +3713,7 @@ void MacroAssembler::ctzc_bit(Register Rd, Register Rs, bool isLL, Register tmp1
 void MacroAssembler::inflate_lo32(Register Rd, Register Rs, Register tmp1, Register tmp2)
 {
   assert_different_registers(Rd, Rs, tmp1, tmp2);
-  li(tmp1, 0xFF);
+  mv(tmp1, 0xFF);
   mv(Rd, zr);
   for (int i = 0; i <= 3; i++)
   {
@@ -3735,7 +3735,7 @@ void MacroAssembler::inflate_lo32(Register Rd, Register Rs, Register tmp1, Regis
 void MacroAssembler::inflate_hi32(Register Rd, Register Rs, Register tmp1, Register tmp2)
 {
   assert_different_registers(Rd, Rs, tmp1, tmp2);
-  li(tmp1, 0xFF00000000);
+  mv(tmp1, 0xFF00000000);
   mv(Rd, zr);
   for (int i = 0; i <= 3; i++)
   {
@@ -3833,7 +3833,7 @@ void MacroAssembler::zero_words(Register base, u_int64_t cnt)
     Register cnt_reg = t0;
     Register loop_base = t1;
     cnt = cnt - remainder;
-    li(cnt_reg, cnt);
+    mv(cnt_reg, cnt);
     add(loop_base, base, remainder * wordSize);
     bind(loop);
     sub(cnt_reg, cnt_reg, unroll);
@@ -4889,7 +4889,7 @@ void MacroAssembler::string_compare(Register str1, Register str2,
   bind(L);
 
   // A very short string
-  li(t0, minCharsInWord);
+  mv(t0, minCharsInWord);
   ble(cnt2, t0, SHORT_STRING);
 
   // Compare longwords
@@ -4900,7 +4900,7 @@ void MacroAssembler::string_compare(Register str1, Register str2,
       ld(tmp1, Address(str1));
       beq(str1, str2, DONE);
       ld(tmp2, Address(str2));
-      li(t0, STUB_THRESHOLD);
+      mv(t0, STUB_THRESHOLD);
       bge(cnt2, t0, STUB);
       sub(cnt2, cnt2, minCharsInWord);
       beqz(cnt2, TAIL_CHECK);
@@ -4914,7 +4914,7 @@ void MacroAssembler::string_compare(Register str1, Register str2,
     } else if (isLU) { // LU case
       lwu(tmp1, Address(str1));
       ld(tmp2, Address(str2));
-      li(t0, STUB_THRESHOLD);
+      mv(t0, STUB_THRESHOLD);
       bge(cnt2, t0, STUB);
       addi(cnt2, cnt2, -4);
       add(str1, str1, cnt2);
@@ -4928,7 +4928,7 @@ void MacroAssembler::string_compare(Register str1, Register str2,
     } else { // UL case
       ld(tmp1, Address(str1));
       lwu(tmp2, Address(str2));
-      li(t0, STUB_THRESHOLD);
+      mv(t0, STUB_THRESHOLD);
       bge(cnt2, t0, STUB);
       addi(cnt2, cnt2, -4);
       slli(t0, cnt2, 1);
@@ -5104,7 +5104,7 @@ void MacroAssembler::arrays_equals(Register a1, Register a2, Register tmp3,
 
   assert(elem_size == 1 || elem_size == 2, "must be char or byte");
   assert_different_registers(a1, a2, result, cnt1, t0, t1, tmp3, tmp4, tmp5, tmp6);
-  li(elem_per_word, wordSize / elem_size);
+  mv(elem_per_word, wordSize / elem_size);
 
   BLOCK_COMMENT("arrays_equals {");
 
