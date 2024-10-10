@@ -494,12 +494,17 @@ class MacroAssembler: public Assembler {
   void double_blt(FloatRegister Rs1, FloatRegister Rs2, Label &l, bool is_far = false, bool is_unordered = false);
   void double_bgt(FloatRegister Rs1, FloatRegister Rs2, Label &l, bool is_far = false, bool is_unordered = false);
 
-  void push_reg(RegSet regs, Register stack) { if (regs.bits()) { push_reg(regs.bits(), stack); } }
-  void pop_reg(RegSet regs, Register stack) { if (regs.bits()) { pop_reg(regs.bits(), stack); } }
+private:
+  int push_reg(unsigned int bitset, Register stack);
+  int pop_reg(unsigned int bitset, Register stack);
+  int push_fp(unsigned int bitset, Register stack);
+  int pop_fp(unsigned int bitset, Register stack);
+
+public:
   void push_reg(Register Rs);
   void pop_reg(Register Rd);
-  int  push_reg(unsigned int bitset, Register stack);
-  int  pop_reg(unsigned int bitset, Register stack);
+  void push_reg(RegSet regs, Register stack) { if (regs.bits()) push_reg(regs.bits(), stack); }
+  void pop_reg(RegSet regs, Register stack)  { if (regs.bits()) pop_reg(regs.bits(), stack); }
 
   // Push and pop everything that might be clobbered by a native
   // runtime call except t0 and t1. (They are always
@@ -804,9 +809,6 @@ class MacroAssembler: public Assembler {
   // if [src1 == src2], dst = 0;
   // if [src1 < src2], dst = -1;
   void cmp_l2i(Register dst, Register src1, Register src2, Register tmp = t0);
-
-  int push_fp(unsigned int bitset, Register stack);
-  int pop_fp(unsigned int bitset, Register stack);
 
   // vext
   void vmnot_m(VectorRegister vd, VectorRegister vs);
