@@ -255,7 +255,6 @@ void MacroAssembler::set_last_Java_frame(Register last_java_sp,
   if (L.is_bound()) {
     set_last_Java_frame(last_java_sp, last_java_fp, target(L), tmp);
   } else {
-    InstructionMark im(this);
     L.add_patch_at(code(), locator());
     set_last_Java_frame(last_java_sp, last_java_fp, pc() /* Patched later */, tmp);
   }
@@ -748,8 +747,7 @@ void MacroAssembler::la(Register Rd, const address &dest) {
 }
 
 void MacroAssembler::la(Register Rd, const Address &adr) {
-  InstructionMark im(this);
-  code_section()->relocate(inst_mark(), adr.rspec());
+  code_section()->relocate(pc(), adr.rspec());
   relocInfo::relocType rtype = adr.rspec().reloc()->type();
 
   switch (adr.getMode()) {
@@ -2638,8 +2636,7 @@ void MacroAssembler::la_patchable(Register reg1, const Address &dest, int32_t &o
   assert(is_valid_riscv64_address(dest.target()), "bad address");
   assert(dest.getMode() == Address::literal, "la_patchable must be applied to a literal address");
 
-  InstructionMark im(this);
-  code_section()->relocate(inst_mark(), dest.rspec());
+  code_section()->relocate(pc(), dest.rspec());
   // RISC-V doesn't compute a page-aligned address, in order to partially
   // compensate for the use of *signed* offsets in its base+disp12
   // addressing mode (RISC-V's PC-relative reach remains asymmetric
@@ -2948,9 +2945,8 @@ void  MacroAssembler::set_narrow_oop(Register dst, jobject obj) {
   }
 #endif
   int oop_index = oop_recorder()->find_index(obj);
-  InstructionMark im(this);
   RelocationHolder rspec = oop_Relocation::spec(oop_index);
-  code_section()->relocate(inst_mark(), rspec);
+  code_section()->relocate(pc(), rspec);
   li32(dst, 0xDEADBEEF);
   zero_extend(dst, dst, 32);
 }
@@ -2961,9 +2957,8 @@ void  MacroAssembler::set_narrow_klass(Register dst, Klass* k) {
   int index = oop_recorder()->find_index(k);
   assert(!Universe::heap()->is_in_reserved(k), "should not be an oop");
 
-  InstructionMark im(this);
   RelocationHolder rspec = metadata_Relocation::spec(index);
-  code_section()->relocate(inst_mark(), rspec);
+  code_section()->relocate(pc(), rspec);
   narrowKlass nk = Klass::encode_klass(k);
   li32(dst, nk);
   zero_extend(dst, dst, 32);
