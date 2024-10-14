@@ -336,6 +336,7 @@ void C1_MacroAssembler::remove_frame(int framesize) {
 
 
 void C1_MacroAssembler::verified_entry() {
+  assert_alignment(pc());
 }
 
 void C1_MacroAssembler::load_parameter(int offset_in_words, Register reg) {
