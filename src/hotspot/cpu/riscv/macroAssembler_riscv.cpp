@@ -747,14 +747,13 @@ void MacroAssembler::la(Register Rd, const address &dest) {
 }
 
 void MacroAssembler::la(Register Rd, const Address &adr) {
-  code_section()->relocate(pc(), adr.rspec());
-  relocInfo::relocType rtype = adr.rspec().reloc()->type();
-
   switch (adr.getMode()) {
     case Address::literal: {
+      relocInfo::relocType rtype = adr.rspec().reloc()->type();
       if (rtype == relocInfo::none) {
         mv(Rd, (intptr_t)(adr.target()));
       } else {
+        relocate(adr.rspec());
         movptr(Rd, adr.target());
       }
       break;
@@ -1289,7 +1288,7 @@ void MacroAssembler::reinit_heapbase() {
 
 void MacroAssembler::mv(Register Rd, Address dest) {
   assert(dest.getMode() == Address::literal, "Address mode should be Address::literal");
-  code_section()->relocate(pc(), dest.rspec());
+  relocate(dest.rspec());
   movptr(Rd, dest.target());
 }
 
@@ -2636,7 +2635,7 @@ void MacroAssembler::la_patchable(Register reg1, const Address &dest, int32_t &o
   assert(is_valid_riscv64_address(dest.target()), "bad address");
   assert(dest.getMode() == Address::literal, "la_patchable must be applied to a literal address");
 
-  code_section()->relocate(pc(), dest.rspec());
+  relocate(dest.rspec());
   // RISC-V doesn't compute a page-aligned address, in order to partially
   // compensate for the use of *signed* offsets in its base+disp12
   // addressing mode (RISC-V's PC-relative reach remains asymmetric
@@ -2930,7 +2929,7 @@ void MacroAssembler::read_polling_page(Register dest, address page, relocInfo::r
 // Read the polling page.  The address of the polling page must
 // already be in r.
 void MacroAssembler::read_polling_page(Register dest, int32_t offset, relocInfo::relocType rtype) {
-  code_section()->relocate(pc(), rtype);
+  relocate(rtype);
   lwu(zr, Address(dest, offset));
 }
 
@@ -2945,8 +2944,7 @@ void  MacroAssembler::set_narrow_oop(Register dst, jobject obj) {
   }
 #endif
   int oop_index = oop_recorder()->find_index(obj);
-  RelocationHolder rspec = oop_Relocation::spec(oop_index);
-  code_section()->relocate(pc(), rspec);
+  relocate(oop_Relocation::spec(oop_index));
   li32(dst, 0xDEADBEEF);
   zero_extend(dst, dst, 32);
 }
@@ -2957,9 +2955,8 @@ void  MacroAssembler::set_narrow_klass(Register dst, Klass* k) {
   int index = oop_recorder()->find_index(k);
   assert(!Universe::heap()->is_in_reserved(k), "should not be an oop");
 
-  RelocationHolder rspec = metadata_Relocation::spec(index);
-  code_section()->relocate(pc(), rspec);
   narrowKlass nk = Klass::encode_klass(k);
+  relocate(metadata_Relocation::spec(index));
   li32(dst, nk);
   zero_extend(dst, dst, 32);
 }
