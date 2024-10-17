@@ -1087,8 +1087,11 @@ nmethod* SharedRuntime::generate_native_wrapper(MacroAssembler* masm,
     int vep_offset = ((intptr_t)__ pc()) - start;
 
     // First instruction must be a nop as it may need to be patched on deoptimisation
-    MacroAssembler::assert_alignment(__ pc());
-    __ nop();
+    {
+      Assembler::IncompressibleRegion ir(masm);  // keep the nop as 4 bytes for patching.
+      MacroAssembler::assert_alignment(__ pc());
+      __ nop();  // 4 bytes
+    }
     gen_special_dispatch(masm,
                          method,
                          in_sig_bt,
@@ -1239,8 +1242,11 @@ nmethod* SharedRuntime::generate_native_wrapper(MacroAssembler* masm,
 
   // If we have to make this method not-entrant we'll overwrite its
   // first instruction with a jump.
-  MacroAssembler::assert_alignment(__ pc());
-  __ nop();
+  {
+    Assembler::IncompressibleRegion ir(masm);  // keep the nop as 4 bytes for patching.
+    MacroAssembler::assert_alignment(__ pc());
+    __ nop();  // 4 bytes
+  }
 
   // Generate stack overflow check
   __ bang_stack_with_offset((int)JavaThread::stack_shadow_zone_size());
