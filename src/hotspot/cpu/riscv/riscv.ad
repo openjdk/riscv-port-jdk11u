@@ -1832,8 +1832,13 @@ encode %{
     unsigned long align = (unsigned long)page & 0xfff;
     assert(align == 0, "polling page must be page aligned");
     Register dst_reg = as_Register($dst$$reg);
-    __ la_patchable(dst_reg, Address(page, relocInfo::poll_type), offset);
-    __ addi(dst_reg, dst_reg, offset);
+    Address target(page, relocInfo::poll_type);
+    {
+      __ relocate(target.rspec());
+      Assembler::IncompressibleRegion ir(&_masm);
+      __ la_patchable(dst_reg, target, offset);
+      __ addi(dst_reg, dst_reg, offset);
+    }
   %}
 
   enc_class riscv_enc_mov_byte_map_base(iRegP dst) %{

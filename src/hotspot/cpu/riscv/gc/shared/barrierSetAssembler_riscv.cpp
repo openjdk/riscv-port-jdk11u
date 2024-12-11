@@ -175,6 +175,8 @@ void BarrierSetAssembler::eden_allocate(MacroAssembler* masm, Register obj,
     // Get the current end of the heap
     ExternalAddress address_end((address) Universe::heap()->end_addr());
     {
+      __ relocate(address_end.rspec());
+      Assembler::IncompressibleRegion ir(masm);
       int32_t offset;
       __ la_patchable(t1, address_end, offset);
       __ ld(t1, Address(t1, offset));
@@ -183,9 +185,13 @@ void BarrierSetAssembler::eden_allocate(MacroAssembler* masm, Register obj,
     // Get the current top of the heap
     ExternalAddress address_top((address) Universe::heap()->top_addr());
     {
-      int32_t offset;
-      __ la_patchable(t0, address_top, offset);
-      __ addi(t0, t0, offset);
+      {
+        __ relocate(address_top.rspec());
+        Assembler::IncompressibleRegion ir(masm);
+        int32_t offset;
+        __ la_patchable(t0, address_top, offset);
+        __ addi(t0, t0, offset);
+      }
       __ lr_d(obj, t0, Assembler::aqrl);
     }
 

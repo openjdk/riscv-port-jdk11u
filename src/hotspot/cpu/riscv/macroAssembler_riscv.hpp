@@ -842,8 +842,11 @@ private:
     if (NearCpool) {
       ld(dest, const_addr);
     } else {
-      int32_t offset = 0;
-      la_patchable(dest, InternalAddress(const_addr.target()), offset);
+      InternalAddress target(const_addr.target());
+      relocate(target.rspec());
+      IncompressibleRegion ir(this);
+      int32_t offset;
+      la_patchable(dest, target, offset);
       ld(dest, Address(dest, offset));
     }
   }

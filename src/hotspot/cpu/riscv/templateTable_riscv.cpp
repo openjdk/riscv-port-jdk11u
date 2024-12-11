@@ -2401,9 +2401,14 @@ void TemplateTable::jvmti_post_field_access(Register cache, Register index,
     // take the time to call into the VM.
     Label L1;
     assert_different_registers(cache, index, x10);
-    int32_t offset = 0;
-    __ la_patchable(t0, ExternalAddress((address) JvmtiExport::get_field_access_count_addr()), offset);
-    __ lwu(x10, Address(t0, offset));
+    ExternalAddress target((address) JvmtiExport::get_field_access_count_addr());
+    {
+      __ relocate(target.rspec());
+      Assembler::IncompressibleRegion ir(_masm);
+      int32_t offset;
+      __ la_patchable(t0, target, offset);
+      __ lwu(x10, Address(t0, offset));
+    }
 
     __ beqz(x10, L1);
 
@@ -2620,9 +2625,14 @@ void TemplateTable::jvmti_post_field_mod(Register cache, Register index, bool is
     // we take the time to call into the VM.
     Label L1;
     assert_different_registers(cache, index, x10);
-    int32_t offset = 0;
-    __ la_patchable(t0, ExternalAddress((address)JvmtiExport::get_field_modification_count_addr()), offset);
-    __ lwu(x10, Address(t0, offset));
+    ExternalAddress target((address)JvmtiExport::get_field_modification_count_addr());
+    {
+      __ relocate(target.rspec());
+      Assembler::IncompressibleRegion ir(_masm);
+      int32_t offset;
+      __ la_patchable(t0, target, offset);
+      __ lwu(x10, Address(t0, offset));
+    }
     __ beqz(x10, L1);
 
     __ get_cache_and_index_at_bcp(c_rarg2, t0, 1);
@@ -2921,9 +2931,14 @@ void TemplateTable::jvmti_post_fast_field_mod()
     // Check to see if a field modification watch has been set before
     // we take the time to call into the VM.
     Label L2;
-    int32_t offset = 0;
-    __ la_patchable(t0, ExternalAddress((address)JvmtiExport::get_field_modification_count_addr()), offset);
-    __ lwu(c_rarg3, Address(t0, offset));
+    ExternalAddress target((address)JvmtiExport::get_field_modification_count_addr());
+    {
+      __ relocate(target.rspec());
+      Assembler::IncompressibleRegion ir(_masm);
+      int32_t offset;
+      __ la_patchable(t0, target, offset);
+      __ lwu(c_rarg3, Address(t0, offset));
+    }
     __ beqz(c_rarg3, L2);
     __ pop_ptr(x9);                  // copy the object pointer from tos
     __ verify_oop(x9);
@@ -3059,9 +3074,14 @@ void TemplateTable::fast_accessfield(TosState state)
     // Check to see if a field access watch has been set before we
     // take the time to call into the VM.
     Label L1;
-    int32_t offset = 0;
-    __ la_patchable(t0, ExternalAddress((address)JvmtiExport::get_field_access_count_addr()), offset);
-    __ lwu(x12, Address(t0, offset));
+    ExternalAddress target((address)JvmtiExport::get_field_access_count_addr());
+    {
+      __ relocate(target.rspec());
+      Assembler::IncompressibleRegion ir(_masm);
+      int32_t offset;
+      __ la_patchable(t0, target, offset);
+      __ lwu(x12, Address(t0, offset));
+    }
     __ beqz(x12, L1);
     // access constant pool cache entry
     __ get_cache_entry_pointer_at_bcp(c_rarg2, t1, 1);

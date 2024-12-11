@@ -188,6 +188,7 @@ void Assembler::ret() {
     switch (adr.getMode()) {                                   \
       case Address::literal: {                                 \
         relocate(adr.rspec());                                 \
+        IncompressibleRegion ir(this);                         \
         NAME(adr.target(), temp);                              \
         break;                                                 \
       }                                                        \

@@ -73,11 +73,16 @@ address JNI_FastGetField::generate_fast_get_int_field0(BasicType type) {
   MacroAssembler* masm = new MacroAssembler(&cbuf);
   address fast_entry = __ pc();
 
-  Label slow;
-  int32_t offset = 0;
-  __ la_patchable(rcounter_addr, SafepointSynchronize::safepoint_counter_addr(), offset);
-  __ addi(rcounter_addr, rcounter_addr, offset);
+  Address target(SafepointSynchronize::safepoint_counter_addr());
+  {
+    __ relocate(target.rspec());
+    Assembler::IncompressibleRegion ir(masm);
+    int32_t offset;
+    __ la_patchable(rcounter_addr, target, offset);
+    __ addi(rcounter_addr, rcounter_addr, offset);
+  }
 
+  Label slow;
   Address safepoint_counter_addr(rcounter_addr, 0);
   __ lwu(rcounter, safepoint_counter_addr);
   // An even value means there are no ongoing safepoint operations
@@ -149,9 +154,14 @@ address JNI_FastGetField::generate_fast_get_int_field0(BasicType type) {
 
   {
     __ enter();
-    int32_t tmp_offset = 0;
-    __ la_patchable(t0, ExternalAddress(slow_case_addr), tmp_offset);
-    __ jalr(x1, t0, tmp_offset);
+    ExternalAddress target(slow_case_addr);
+    {
+      __ relocate(target.rspec());
+      Assembler::IncompressibleRegion ir(masm);
+      int32_t offset;
+      __ la_patchable(t0, target, offset);
+      __ jalr(x1, t0, offset);
+    }
     __ leave();
     __ ret();
   }
