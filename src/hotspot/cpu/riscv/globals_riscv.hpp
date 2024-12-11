@@ -102,10 +102,10 @@ define_pd_global(intx, InlineSmallCode,          1000);
           "Extend i for r and o for w in the pred/succ flags of fence")          \
   product(bool, AvoidUnalignedAccesses, true,                                    \
           "Avoid generating unaligned memory accesses")                          \
+  product(bool, UseRVC, true,  "Use RVC instructions")                           \
   experimental(bool, UseRVV, false, "Use RVV instructions")                      \
   experimental(bool, UseZba, false, "Use Zba instructions")                      \
   experimental(bool, UseZbb, false, "Use Zbb instructions")                      \
-  experimental(bool, UseZbs, false, "Use Zbs instructions")                      \
-  experimental(bool, UseRVC, false, "Use RVC instructions")
+  experimental(bool, UseZbs, false, "Use Zbs instructions")
 
 #endif // CPU_RISCV_GLOBALS_RISCV_HPP
