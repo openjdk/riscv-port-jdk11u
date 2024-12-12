@@ -439,7 +439,8 @@ public:
   result_type header {                                                      \
     guarantee(rtype == relocInfo::internal_word_type,                       \
               "only internal_word_type relocs make sense here");            \
-    relocate(InternalAddress(dest).rspec());
+    relocate(InternalAddress(dest).rspec());                                \
+    IncompressibleRegion ir(this);  /* relocations */
 
   // Load/store register (all modes)
 #define INSN(NAME, op, funct3)                                                                     \
@@ -485,6 +486,7 @@ public:
     switch (adr.getMode()) {                                                                       \
       case Address::literal: {                                                                     \
         relocate(adr.rspec());                                                                     \
+        IncompressibleRegion ir(this);                                                             \
         NAME(Rd, adr.target());                                                                    \
         break;                                                                                     \
       }                                                                                            \
@@ -559,6 +561,7 @@ public:
     switch (adr.getMode()) {                                                                       \
       case Address::literal: {                                                                     \
         relocate(adr.rspec());                                                                     \
+        IncompressibleRegion ir(this);                                                             \
         NAME(Rd, adr.target(), temp);                                                              \
         break;                                                                                     \
       }                                                                                            \
@@ -702,6 +705,7 @@ public:
       case Address::literal: {                                                                     \
         assert_different_registers(Rs, temp);                                                      \
         relocate(adr.rspec());                                                                     \
+        IncompressibleRegion ir(this);                                                             \
         NAME(Rs, adr.target(), temp);                                                              \
         break;                                                                                     \
       }                                                                                            \
@@ -745,6 +749,7 @@ public:
     switch (adr.getMode()) {                                                                       \
       case Address::literal: {                                                                     \
         relocate(adr.rspec());                                                                     \
+        IncompressibleRegion ir(this);                                                             \
         NAME(Rs, adr.target(), temp);                                                              \
         break;                                                                                     \
       }                                                                                            \
@@ -2053,13 +2058,13 @@ enum Nf {
 //     versions. An example:
 //
 //      CompressibleRegion cr(_masm);
-//      __ add(...);       // this instruction will be compressed into 'c.and' when possible
+//      __ add(...);       // this instruction will be compressed into 'c.add' when possible
 //      {
 //         IncompressibleRegion ir(_masm);
 //         __ add(...);    // this instruction will not be compressed
 //         {
 //            CompressibleRegion cr(_masm);
-//            __ add(...); // this instruction will be compressed into 'c.and' when possible
+//            __ add(...); // this instruction will be compressed into 'c.add' when possible
 //         }
 //      }
 //
@@ -2103,6 +2108,27 @@ public:
       _masm->set_in_compressible_region(_saved_in_compressible_region);
     }
   };
+
+public:
+  // Emit a relocation.
+  void relocate(RelocationHolder const& rspec, int format = 0) {
+    AbstractAssembler::relocate(rspec, format);
+  }
+  void relocate(relocInfo::relocType rtype, int format = 0) {
+    AbstractAssembler::relocate(rtype, format);
+  }
+  template <typename Callback>
+  void relocate(RelocationHolder const& rspec, Callback emit_insts, int format = 0) {
+    AbstractAssembler::relocate(rspec, format);
+    IncompressibleRegion ir(this);  // relocations
+    emit_insts();
+  }
+  template <typename Callback>
+  void relocate(relocInfo::relocType rtype, Callback emit_insts, int format = 0) {
+    AbstractAssembler::relocate(rtype, format);
+    IncompressibleRegion ir(this);  // relocations
+    emit_insts();
+  }
 
   // patch a 16-bit instruction.
   static void c_patch(address a, unsigned msb, unsigned lsb, uint16_t val) {
@@ -3014,7 +3040,7 @@ public:
   // zero extend word
   void zext_w(Register Rd, Register Rs);
 
-  Assembler(CodeBuffer* code) : AbstractAssembler(code), _in_compressible_region(false) {
+  Assembler(CodeBuffer* code) : AbstractAssembler(code), _in_compressible_region(true) {
   }
 
   virtual RegisterOrConstant delayed_value_impl(intptr_t* delayed_value_addr,
